@@ -13,6 +13,11 @@
 Elite bot:
     python ppo_entity.py --init runs/ppo_v5/policy.pt --layout v7 --reward aggressive \
         --opponents 2 --opponent-policy runs/ppo_v5/policy.pt --kl-start 0.1 --kl-end 0.01 --run ppo_elite
+
+Elite v2: scoreboard reward (a death costs the score it wipes), every ship family (personas), against
+frozen copies of the elite:
+    python ppo_entity.py --init runs/ppo_elite/policy.pt --reward board --ship-style --agents 4 --bots 40 \
+        --opponents 4 --opponent-policy runs/ppo_elite/policy.pt --kl-start 0.05 --kl-end 0.01 --run ppo_elite2
 """
 
 from __future__ import annotations
@@ -28,10 +33,10 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 import entity_policy as ep
-from mk48env import AGGRESSIVE, DIED, KILLS, SCORE_DELTA, SERVER_BUILDS, Mk48VecEnv, RewardConfig, ServerConfig
+from mk48env import AGGRESSIVE, BOARD, DIED, KILLS, SCORE_DELTA, SERVER_BUILDS, Mk48VecEnv, RewardConfig, ServerConfig
 
 SERVERS = SERVER_BUILDS
-REWARDS = {"default": RewardConfig(), "aggressive": AGGRESSIVE}
+REWARDS = {"default": RewardConfig(), "aggressive": AGGRESSIVE, "board": BOARD}
 
 
 class RunningMeanStd:
@@ -84,6 +89,23 @@ def main() -> None:
     p.add_argument("--reward", choices=list(REWARDS), default="default")
     p.add_argument("--opponents", type=int, default=0, help="frozen NN opponents per world")
     p.add_argument("--opponent-policy", default=None)
+    p.add_argument("--ship-style", action="store_true",
+                   help="random per-life vehicle preferences, so every ship family and its weapons get practice")
+    p.add_argument("--agent-kind", choices=["player", "bot", "nn-bot"], default="player")
+    p.add_argument("--free-heads", default="",
+                   help="comma-separated heads left out of the KL anchor, for skills the starting policy never "
+                        "learned (e.g. submerge,active)")
+    p.add_argument("--defense-coef", type=float, default=0.0,
+                   help="weight of an auxiliary imitation loss teaching SAMs against incoming missiles and "
+                        "aircraft and decoys against closing torpedoes and missiles (ep.defense_labels)")
+    p.add_argument("--doctrine-coef", type=float, default=0.0,
+                   help="weight of an auxiliary imitation loss teaching carriers to launch aircraft at ships "
+                        "in reach and submerged submarines to keep active sonar off (ep.doctrine_labels)")
+    p.add_argument("--dive-bias", type=float, default=0.0,
+                   help="added to the starting policy's 'dive' logit so submarines explore diving "
+                        "(only submarines can dive; the server ignores it for other ships)")
+    p.add_argument("--server", type=Path, default=None,
+                   help="server binary (default: the build for the layout); a copy keeps rebuilds out of a long run")
     a = p.parse_args()
 
     dev = a.device
@@ -101,7 +123,8 @@ def main() -> None:
     per_world = a.agents + a.opponents
     env = Mk48VecEnv(
         n_procs=a.procs,
-        server=ServerConfig(agents=per_world, bots=a.bots, server_path=SERVERS[version]),
+        server=ServerConfig(agents=per_world, bots=a.bots, ship_style=a.ship_style, agent_kind=a.agent_kind,
+                            server_path=a.server or SERVERS[version]),
         reward=reward_cfg,
         world_minutes=a.world_minutes,
     )
@@ -131,6 +154,13 @@ def main() -> None:
         for param in ref.parameters():
             param.requires_grad_(False)
         print(f"initialized from {a.init}; anchoring with KL {a.kl_start} -> {a.kl_end}")
+    if a.dive_bias:
+        with torch.no_grad():
+            policy.heads["submerge"].bias[1] += a.dive_bias
+        print(f"dive logit +{a.dive_bias}")
+    free_heads = {h for h in a.free_heads.split(",") if h}
+    if free_heads:
+        print(f"not anchored: {sorted(free_heads)}")
     opt_pi = torch.optim.Adam(policy.parameters(), lr=a.lr, eps=1e-5)
     opt_v = torch.optim.Adam(value.parameters(), lr=a.vf_lr, eps=1e-5)
     # fp16 autocast on the GPU (~1.6x faster updates); logits/values are cast back to fp32.
@@ -253,7 +283,8 @@ def main() -> None:
 
             policy.train()
             value.train()
-            logs = {"value_loss": [], "pg_loss": [], "entropy": [], "kl_ref": [], "approx_kl": [], "clipfrac": []}
+            logs = {"value_loss": [], "pg_loss": [], "entropy": [], "kl_ref": [], "approx_kl": [], "clipfrac": [],
+                    "defense_lesson": [], "doctrine_lesson": []}
             total = len(f_ret)
             for _ in range(a.epochs):
                 perm = torch.randperm(total, device=dev)
@@ -278,9 +309,33 @@ def main() -> None:
                     if ref is not None:
                         with torch.no_grad():
                             ref_logits = ref_pi(o)
+                        ref_logits = {n: v for n, v in ref_logits.items() if n not in free_heads}
                         kl_ref = ep.kl(ref_logits, logits).mean()
                         loss = loss + beta * kl_ref
                         logs["kl_ref"].append(kl_ref.item())
+                    if a.defense_coef:
+                        rows, target, weapon = ep.defense_labels(o, layout)
+                        if rows.any():
+                            def lp(head, label):
+                                return torch.log_softmax(logits[head][rows].float(), -1).gather(1, label[rows, None])[:, 0]
+                            lesson = -(lp("fire", torch.ones_like(target)) + lp("weapon", weapon) + lp("target", target)).mean()
+                            loss = loss + a.defense_coef * lesson
+                            logs["defense_lesson"].append(lesson.item())
+                    if a.doctrine_coef:
+                        air, air_target, stealth = ep.doctrine_labels(o, layout)
+                        terms = []
+                        if air.any():
+                            def air_lp(head, label):
+                                return torch.log_softmax(logits[head][air].float(), -1).gather(1, label[air, None])[:, 0]
+                            weapon = torch.full_like(air_target, 3)
+                            terms.append(-(air_lp("fire", torch.ones_like(air_target)) + air_lp("weapon", weapon)
+                                           + air_lp("target", air_target)).mean())
+                        if stealth.any():
+                            terms.append(-torch.log_softmax(logits["active"][stealth].float(), -1)[:, 0].mean())
+                        if terms:
+                            lesson = sum(terms)
+                            loss = loss + a.doctrine_coef * lesson
+                            logs["doctrine_lesson"].append(lesson.item())
                     apply(loss, opt_pi, scaler_pi, policy.parameters())
                     with torch.no_grad():
                         logs["approx_kl"].append(((ratio - 1) - log_ratio).mean().item())

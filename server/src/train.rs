@@ -44,7 +44,7 @@ use std::collections::HashMap;
 use std::io::{BufReader, BufWriter, ErrorKind, Read, Write};
 use std::os::fd::FromRawFd;
 use std::process::ExitCode;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 pub(crate) const MAGIC: u32 = 0x4d6b_3438; // "Mk48"
 
@@ -66,11 +66,12 @@ pub const OBS_DIM: usize =
 pub const ACT_DIM: usize = 10;
 
 /// score, alive, died, kills, score_delta, health_lost, fired, level, death_cause, damage_dealt,
-/// board_rank
+/// board_rank, score_lost
 /// (death_cause: 0 none, 1 terrain, 2 border, 3 weapon, 4 ram/collision, 5 obstacle, 6 other;
 /// damage_dealt: boats' worth of weapon damage dealt this step; board_rank: scoreboard position
-/// among everyone in the world, bots included, 1 = top, 0 = bottom)
-pub const INFO_DIM: usize = 11;
+/// among everyone in the world, bots included, 1 = top, 0 = bottom; score_lost: score the death
+/// this step cost, which the scoreboard shows but score_delta doesn't)
+pub const INFO_DIM: usize = 12;
 /// With `--expert-labels`, each info row is followed by the built-in bot's choice for the same
 /// observation, expressed in the agent's action space: `ACT_DIM` values, then valid, aim_valid.
 pub const EXPERT_DIM: usize = ACT_DIM + 2;
@@ -110,6 +111,8 @@ struct Config {
     ship_style: bool,
     /// Aim ahead of moving targets (`lead_point`); `--no-lead` aims at their current position.
     lead_aim: bool,
+    /// Agents' score when they join (`--start-score`), e.g. to test protecting a lead.
+    start_score: u32,
 }
 
 impl Config {
@@ -131,6 +134,7 @@ impl Config {
             expert_labels: false,
             ship_style: false,
             lead_aim: true,
+            start_score: 0,
         };
         let mut it = args.iter();
         while let Some(flag) = it.next() {
@@ -159,6 +163,10 @@ impl Config {
                 "--in-fd" => cfg.in_fd = Some(value.parse().map_err(|e| bad(&e))?),
                 "--out-fd" => cfg.out_fd = Some(value.parse().map_err(|e| bad(&e))?),
                 "--bot-aggression" => cfg.bot_aggression = value.parse().map_err(|e| bad(&e))?,
+                "--start-score" => cfg.start_score = value.parse().map_err(|e| bad(&e))?,
+                "--ship-ratings" => {
+                    load_ship_ratings(value)?;
+                }
                 "--agent-kind" => {
                     cfg.agent_kind = match value.as_str() {
                         "player" => AgentKind::Player,
@@ -309,6 +317,7 @@ pub fn run(args: &[String]) -> ExitCode {
             .unwrap();
             let tuple = new_player(player_id);
             tuple.borrow_player_mut().nn_driven = cfg.agent_kind == AgentKind::NnBot;
+            tuple.borrow_player_mut().score = cfg.start_score;
             let mut agent = Agent::new(tuple, player_id);
             agent.scripted = cfg.scripted_agents.then(Bot::default);
             agent.shadow = cfg.expert_labels.then(Bot::default);
@@ -394,7 +403,9 @@ pub fn run(args: &[String]) -> ExitCode {
             for slot in &mut bots {
                 let action = {
                     let update = world.get_player_complete(&slot.tuple);
-                    slot.bot.act(update, slot.player_id, cfg.bot_aggression)
+                    slot.bot.act(update, slot.player_id, cfg.bot_aggression, |id| {
+                        players.is_nn_driven(id)
+                    })
                 };
                 if let BotAction::Some(command) = action {
                     let _ = command.as_command().apply(
@@ -476,6 +487,7 @@ pub fn run(args: &[String]) -> ExitCode {
             let below = board.iter().filter(|s| **s < score).count() as f32;
             let ties = board.iter().filter(|s| **s == score).count().saturating_sub(1) as f32;
             info[10] = (below + 0.5 * ties) / board.len().saturating_sub(1).max(1) as f32;
+            info[11] = if died { agent.prev_score.saturating_sub(score) as f32 } else { 0.0 };
 
             agent.was_alive = now_alive;
             agent.prev_score = score;
@@ -484,7 +496,9 @@ pub fn run(args: &[String]) -> ExitCode {
             if let Some(mut shadow) = agent.shadow.take() {
                 let command = {
                     let update = world.get_player_complete(&agent.tuple);
-                    shadow.act(update, agent.player_id, cfg.bot_aggression)
+                    shadow.act(update, agent.player_id, cfg.bot_aggression, |id| {
+                        players.is_nn_driven(id)
+                    })
                 };
                 agent.shadow = Some(shadow);
                 let expert = &mut info[INFO_DIM..INFO_DIM + EXPERT_DIM];
@@ -519,14 +533,58 @@ pub(crate) fn pick_spawn_type(score: u32, agent: &Agent) -> Option<EntityType> {
     )
 }
 
+/// Score/min the network gets in each ship, measured by evaluation (`ship_ratings.py`).
+static SHIP_RATINGS: OnceLock<HashMap<EntityType, f32>> = OnceLock::new();
+
+/// Loads ship ratings (`name<TAB>score_per_min` lines, `#` comments) for vehicle preferences.
+pub(crate) fn load_ship_ratings(path: &str) -> Result<usize, String> {
+    let text = std::fs::read_to_string(path).map_err(|e| format!("ship ratings {path}: {e}"))?;
+    let mut ratings = HashMap::new();
+    for line in text.lines().filter(|l| !l.trim().is_empty() && !l.starts_with('#')) {
+        let mut fields = line.split('\t');
+        let (Some(name), Some(rating)) = (fields.next(), fields.next()) else {
+            return Err(format!("ship ratings {path}: bad line {line:?}"));
+        };
+        let entity_type = EntityType::iter()
+            .find(|t| t.as_str() == name)
+            .ok_or(format!("ship ratings {path}: unknown ship {name}"))?;
+        let rating: f32 = rating.trim().parse().map_err(|e| format!("ship ratings {path}: {e}"))?;
+        ratings.insert(entity_type, rating);
+    }
+    let n = ratings.len();
+    SHIP_RATINGS.set(ratings).map_err(|_| "ship ratings already loaded".to_owned())?;
+    Ok(n)
+}
+
 /// The agent's vehicle preferences for this life if it has them, else its ship family.
 fn choose_ship(options: impl Iterator<Item = EntityType>, agent: &Agent) -> Option<EntityType> {
+    choose_ship_rated(options, agent, SHIP_RATINGS.get())
+}
+
+fn choose_ship_rated(
+    options: impl Iterator<Item = EntityType>,
+    agent: &Agent,
+    ratings: Option<&HashMap<EntityType, f32>>,
+) -> Option<EntityType> {
     let Some(prefs) = &agent.ship_prefs else {
         return choose_in_group(options, agent.ship_group, &mut thread_rng());
     };
     let all: Vec<EntityType> = options.collect();
     let strong: Vec<EntityType> = all.iter().copied().filter(|t| !is_weak_ship(*t)).collect();
-    let options = if strong.is_empty() { all } else { strong };
+    let mut options = if strong.is_empty() { all } else { strong };
+    // With ratings, only ships close to the best option are considered: nearly the best in the
+    // first levels (a fast start), a wider choice later (2-4 ships per level).
+    if let Some(ratings) = ratings {
+        let best = options
+            .iter()
+            .filter_map(|t| ratings.get(t).copied())
+            .fold(f32::NEG_INFINITY, f32::max);
+        if best.is_finite() {
+            let level = options.first().map_or(1, |t| t.data().level);
+            let floor = best * if level <= 3 { 0.85 } else { 0.6 };
+            options.retain(|t| ratings.get(t).map_or(false, |r| *r >= floor));
+        }
+    }
     options
         .into_iter()
         .max_by(|a, b| prefs.weight(*a).total_cmp(&prefs.weight(*b)))
@@ -651,7 +709,7 @@ pub(crate) fn act_agent(
     if let Some(bot) = agent.scripted.as_mut() {
         let command = {
             let update = world.get_player_complete(&agent.tuple);
-            bot.act(update, agent.player_id, bot_aggression)
+            bot.act(update, agent.player_id, bot_aggression, |id| players.is_nn_driven(id))
         };
         if let BotAction::Some(command) = command {
             let fired = matches!(&command, Command::Control(c) if c.fire.is_some());
@@ -1206,4 +1264,142 @@ pub(crate) fn observe(world: &World, agent: &Agent, obs: &mut [f32]) -> (u32, f3
     }
 
     (score, health, data.level)
+}
+
+
+
+/// `server self-test`: checks of the NN rules (lead aim, ship personas, player rules for NN bots).
+/// The crate's `cargo test` target doesn't build (stale upstream test modules), so they run from
+/// the binary instead; `agent/tests/test_server_rules.py` calls this.
+pub fn self_test() -> ExitCode {
+    let checks: &[(&str, fn())] = &[
+        ("lead_point_still_target_is_its_position", checks::lead_point_still_target_is_its_position),
+        ("lead_point_meets_a_crossing_target", checks::lead_point_meets_a_crossing_target),
+        ("lead_point_none_when_target_outruns_the_weapon", checks::lead_point_none_when_target_outruns_the_weapon),
+        ("lead_point_only_for_aimed_weapons", checks::lead_point_only_for_aimed_weapons),
+        ("personas_avoid_weak_ships_when_there_is_a_choice", checks::personas_avoid_weak_ships_when_there_is_a_choice),
+        ("personas_vary_and_respect_rating_floors", checks::personas_vary_and_respect_rating_floors),
+        ("nn_driven_bots_play_by_player_rules", checks::nn_driven_bots_play_by_player_rules),
+    ];
+    let mut failed = 0;
+    for (name, check) in checks {
+        match std::panic::catch_unwind(check) {
+            Ok(()) => println!("ok    {name}"),
+            Err(_) => {
+                failed += 1;
+                println!("FAIL  {name}");
+            }
+        }
+    }
+    println!("self-test: {} passed, {failed} failed", checks.len() - failed);
+    if failed == 0 {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    }
+}
+
+mod checks {
+    use super::*;
+
+    fn moving(x: f32, y: f32, heading_degrees: f32, mps: f32) -> Transform {
+        Transform {
+            position: Vec2::new(x, y),
+            direction: Angle::from_degrees(heading_degrees),
+            velocity: Velocity::from_mps(mps),
+        }
+    }
+
+    const TORPEDO: usize = 0;
+    const GUN: usize = 1;
+
+    /// Speed (m/s) and range (m) of the ship's first weapon of a class.
+    fn weapon(entity_type: EntityType, class: usize) -> (f32, f32) {
+        let w = entity_type
+            .data()
+            .armaments
+            .iter()
+            .map(|a| a.entity_type.data())
+            .find(|w| w.kind == EntityKind::Weapon && weapon_class(w.sub_kind) == Some(class))
+            .unwrap();
+        (w.speed.to_mps(), w.speed.to_mps() * w.lifespan.to_secs())
+    }
+
+    pub(super) fn lead_point_still_target_is_its_position() {
+        let (_, range) = weapon(EntityType::Fletcher, GUN);
+        let target = moving(0.5 * range, 0.0, 90.0, 0.0);
+        let p = lead_point(EntityType::Fletcher.data(), GUN, Vec2::ZERO, &target).unwrap();
+        assert!(p.distance(target.position) < 1e-2, "{p}");
+    }
+
+    pub(super) fn lead_point_meets_a_crossing_target() {
+        for class in [TORPEDO, GUN] {
+            let (speed, range) = weapon(EntityType::Fletcher, class);
+            let target = moving(0.5 * range, 0.0, 90.0, 0.25 * speed);
+            let p = lead_point(EntityType::Fletcher.data(), class, Vec2::ZERO, &target).unwrap();
+            assert!(p.y > 0.0, "aims ahead of a ship heading north: {p}");
+            // The weapon and the ship arrive at the same time.
+            let t_weapon = p.length() / speed;
+            let t_ship = p.distance(target.position) / (0.25 * speed);
+            assert!((t_weapon - t_ship).abs() < 1e-2 * t_weapon, "{t_weapon} vs {t_ship}");
+        }
+    }
+
+    pub(super) fn lead_point_none_when_target_outruns_the_weapon() {
+        let (speed, range) = weapon(EntityType::Fletcher, TORPEDO);
+        let target = moving(0.5 * range, 0.0, 0.0, 2.0 * speed); // straight away, twice as fast
+        assert!(lead_point(EntityType::Fletcher.data(), TORPEDO, Vec2::ZERO, &target).is_none());
+        let beyond = moving(2.0 * range, 0.0, 90.0, 0.0); // out of range
+        assert!(lead_point(EntityType::Fletcher.data(), TORPEDO, Vec2::ZERO, &beyond).is_none());
+    }
+
+    pub(super) fn lead_point_only_for_aimed_weapons() {
+        let data = EntityType::Fletcher.data();
+        for class in 3..WEAPON_CLASSES {
+            assert!(lead_point(data, class, Vec2::ZERO, &moving(400.0, 0.0, 90.0, 10.0)).is_none());
+        }
+    }
+
+    fn agent(player_id: PlayerId) -> Agent {
+        let tuple = Arc::new(PlayerTuple::new(TempPlayer::new(player_id, None)));
+        let mut agent = Agent::new(tuple, player_id);
+        agent.ship_prefs = Some(ShipPrefs::random());
+        agent
+    }
+
+    pub(super) fn personas_avoid_weak_ships_when_there_is_a_choice() {
+        let level_1: Vec<EntityType> = EntityType::spawn_options(0, false).collect();
+        assert!(level_1.iter().any(|t| is_weak_ship(*t)), "test needs a weak level-1 ship");
+        for _ in 0..200 {
+            let mut a = agent(PlayerId::nth_client(0).unwrap());
+            a.new_life();
+            let choice = choose_ship_rated(level_1.iter().copied(), &a, None).unwrap();
+            assert!(!is_weak_ship(choice), "{choice:?}");
+        }
+    }
+
+    pub(super) fn personas_vary_and_respect_rating_floors() {
+        let level_1: Vec<EntityType> = EntityType::spawn_options(0, false).filter(|t| !is_weak_ship(*t)).collect();
+        // Without ratings, different lives pick different ships.
+        let picks: std::collections::HashSet<EntityType> = (0..200)
+            .map(|_| choose_ship_rated(level_1.iter().copied(), &agent(PlayerId::nth_client(0).unwrap()), None).unwrap())
+            .collect();
+        assert!(picks.len() > 1, "{picks:?}");
+        // With ratings, level 1-3 only takes ships within 85% of the best.
+        let best = level_1[0];
+        let ratings: HashMap<EntityType, f32> =
+            level_1.iter().map(|t| (*t, if *t == best { 10.0 } else { 5.0 })).collect();
+        for _ in 0..200 {
+            let a = agent(PlayerId::nth_client(0).unwrap());
+            assert_eq!(choose_ship_rated(level_1.iter().copied(), &a, Some(&ratings)), Some(best));
+        }
+    }
+
+    pub(super) fn nn_driven_bots_play_by_player_rules() {
+        let mut bot = TempPlayer::new(PlayerId::nth_bot(0).unwrap(), None);
+        assert!(bot.has_bot_rules());
+        bot.nn_driven = true;
+        assert!(!bot.has_bot_rules());
+        assert!(!TempPlayer::new(PlayerId::nth_client(0).unwrap(), None).has_bot_rules());
+    }
 }

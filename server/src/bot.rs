@@ -76,12 +76,14 @@ impl Bot {
     }
 
     /// act processes a complete update and returns some command (or None to quit).
-    /// `aggression_scale` multiplies this bot's randomized aggression.
+    /// `aggression_scale` multiplies this bot's randomized aggression. `nn_driven` tells which
+    /// players are NN-driven bots; they are treated like players.
     pub fn act<'a, U: 'a + CompleteTrait<'a>>(
         &mut self,
         mut update: U,
         player_id: PlayerId,
         aggression_scale: f32,
+        nn_driven: impl Fn(PlayerId) -> bool,
     ) -> BotAction<Command> {
         let aggression = self.aggression * aggression_scale;
         let mut rng = thread_rng();
@@ -173,7 +175,10 @@ impl Bot {
                                     contact_data.sub_kind,
                                     EntitySubKind::Dredger | EntitySubKind::Icebreaker
                                 ))
-                                || contact.player_id().map(|id| id.is_bot()).unwrap_or(false)
+                                || contact
+                                    .player_id()
+                                    .map(|id| id.is_bot() && !nn_driven(id))
+                                    .unwrap_or(false)
                                 || distance_squared < 1.5 * data.radius.powi(2)
                                 || health_percent < 1.0 / 3.0
                         }
@@ -387,6 +392,8 @@ impl kodiak_server::Bot<Server> for Bot {
             .inner
             .bot_mut()
             .unwrap()
-            .act(update, player_id, settings.bot_aggression())
+            .act(update, player_id, settings.bot_aggression(), |id| {
+                server.player.is_nn_driven(id)
+            })
     }
 }

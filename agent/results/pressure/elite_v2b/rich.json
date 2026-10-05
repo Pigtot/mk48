@@ -1,0 +1,207 @@
+{
+ "policy": "runs/ppo_elite2b/policy.pt",
+ "ratings": "ship_ratings_v2b.tsv",
+ "scale": 1.0,
+ "agents": 16,
+ "minutes": 30.0,
+ "ship_style": true,
+ "scorecard": [
+  [
+   "rich",
+   "board rank",
+   "98%",
+   ">= 95%",
+   "PASS"
+  ],
+  [
+   "rich",
+   "deaths/min",
+   "0.010",
+   "<= 0.05",
+   "PASS"
+  ]
+ ],
+ "result": {
+  "score": [
+   54.62083333333333,
+   5.258556720444034
+  ],
+  "kills": [
+   1.09375,
+   0.10427620371612817
+  ],
+  "deaths": [
+   0.010416666666666666,
+   0.009092407347647316
+  ],
+  "fired": [
+   16.614583333333332,
+   1.0826004823752968
+  ],
+  "damage": [
+   1.8438201168862483,
+   0.1459410135542071
+  ],
+  "damage_per_shot": 0.11097600703515977,
+  "score_lost": [
+   12.508333333333333,
+   12.564234359404567
+  ],
+  "board_score": [
+   2114.26136846741,
+   69.36797658443463
+  ],
+  "board_rank": [
+   0.9848485118054668,
+   0.0013378994718047626
+  ],
+  "kd": 105.0,
+  "max_level_mean": 9.6875,
+  "agent_steps_per_sec": 420.58181196559593,
+  "by_type": {
+   "Iowa": {
+    "level": 10,
+    "family": "surface",
+    "share": 0.3788125,
+    "score_per_min": 75.76857504262223,
+    "kd": 288.0,
+    "fires_per_min": 24.577902436341635,
+    "weapon_mix": {
+     "torpedo": 0.01,
+     "gun": 0.52,
+     "missile": 0.39,
+     "aircraft": 0.0,
+     "SAM": 0.08,
+     "decoy": 0.0
+    }
+   },
+   "Seawolf": {
+    "level": 9,
+    "family": "submarine",
+    "share": 0.20921527777777776,
+    "score_per_min": 5.885086467288479,
+    "kd": 49.0,
+    "fires_per_min": 3.9831380489262123,
+    "weapon_mix": {
+     "torpedo": 0.8,
+     "missile": 0.08,
+     "aircraft": 0.01,
+     "depth/mine": 0.01,
+     "SAM": 0.02,
+     "decoy": 0.08
+    }
+   },
+   "Yamato": {
+    "level": 9,
+    "family": "surface",
+    "share": 0.1539861111111111,
+    "score_per_min": 61.315053666456215,
+    "kd": 10.75,
+    "fires_per_min": 6.196446288445928,
+    "weapon_mix": {
+     "torpedo": 0.02,
+     "gun": 0.51,
+     "aircraft": 0.35,
+     "depth/mine": 0.0,
+     "SAM": 0.04,
+     "decoy": 0.08
+    }
+   },
+   "Clemenceau": {
+    "level": 9,
+    "family": "carrier",
+    "share": 0.138,
+    "score_per_min": 81.37077294685992,
+    "kd": 91.0,
+    "fires_per_min": 27.18900966183575,
+    "weapon_mix": {
+     "torpedo": 0.0,
+     "gun": 0.43,
+     "missile": 0.01,
+     "aircraft": 0.02,
+     "depth/mine": 0.0,
+     "SAM": 0.52,
+     "decoy": 0.02
+    }
+   },
+   "Yasen": {
+    "level": 8,
+    "family": "submarine",
+    "share": 0.07369444444444445,
+    "score_per_min": 8.226535996984545,
+    "kd": 27.0,
+    "fires_per_min": 7.972107048624198,
+    "weapon_mix": {
+     "torpedo": 0.15,
+     "gun": 0.01,
+     "missile": 0.27,
+     "depth/mine": 0.0,
+     "SAM": 0.53,
+     "decoy": 0.04
+    }
+   },
+   "Kirov": {
+    "level": 8,
+    "family": "surface",
+    "share": 0.043111111111111114,
+    "score_per_min": 71.472293814433,
+    "kd": 26.0,
+    "fires_per_min": 25.708762886597942,
+    "weapon_mix": {
+     "torpedo": 0.07,
+     "gun": 0.2,
+     "missile": 0.12,
+     "aircraft": 0.0,
+     "depth/mine": 0.0,
+     "SAM": 0.6
+    }
+   },
+   "Bismarck": {
+    "level": 7,
+    "family": "surface",
+    "share": 0.002201388888888889,
+    "score_per_min": 81.38801261829653,
+    "kd": 0.0,
+    "fires_per_min": 22.71293375394322,
+    "weapon_mix": {
+     "gun": 0.71,
+     "missile": 0.04,
+     "aircraft": 0.12,
+     "depth/mine": 0.04,
+     "SAM": 0.08
+    }
+   },
+   "Moskva": {
+    "level": 7,
+    "family": "carrier",
+    "share": 0.0009791666666666666,
+    "score_per_min": 153.19148936170214,
+    "kd": 1.0,
+    "fires_per_min": 19.148936170212767,
+    "weapon_mix": {
+     "torpedo": 0.89,
+     "aircraft": 0.11
+    }
+   }
+  },
+  "family_share": {
+   "surface": 0.5781111111111111,
+   "submarine": 0.2829097222222222,
+   "carrier": 0.13897916666666668
+  },
+  "death_causes": {
+   "terrain": 1,
+   "weapon": 4
+  },
+  "score_by_10min": [
+   53.69375,
+   60.875,
+   49.29375
+  ],
+  "board_rank_by_10min": [
+   0.9848485117065138,
+   0.9848485118389363,
+   0.9848485118709505
+  ]
+ }
+}

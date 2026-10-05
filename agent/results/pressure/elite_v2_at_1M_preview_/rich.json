@@ -1,0 +1,194 @@
+{
+ "policy": "runs/ppo_elite2/checkpoints/policy_1015808.pt",
+ "ratings": "ship_ratings.tsv",
+ "scale": 1.0,
+ "scorecard": [
+  [
+   "rich",
+   "board rank",
+   "98%",
+   ">= 95%",
+   "PASS"
+  ],
+  [
+   "rich",
+   "deaths/min",
+   "0.023",
+   "<= 0.05",
+   "PASS"
+  ]
+ ],
+ "result": {
+  "score": [
+   73.45625,
+   7.385084738219577
+  ],
+  "kills": [
+   1.13125,
+   0.10379036910287383
+  ],
+  "deaths": [
+   0.022916666666666665,
+   0.013400772710265506
+  ],
+  "fired": [
+   14.70625,
+   0.8372243741186122
+  ],
+  "damage": [
+   1.87618270314609,
+   0.1478234687306989
+  ],
+  "damage_per_shot": 0.12757723438307456,
+  "score_lost": [
+   30.702083333333334,
+   19.836747169233025
+  ],
+  "board_score": [
+   2134.975778919707,
+   68.19980611317546
+  ],
+  "board_rank": [
+   0.9845849379620631,
+   0.0013414185699424854
+  ],
+  "kd": 49.36363636363637,
+  "max_level_mean": 9.875,
+  "agent_steps_per_sec": 750.6516777341473,
+  "by_type": {
+   "Iowa": {
+    "level": 10,
+    "family": "surface",
+    "share": 0.37411805555555555,
+    "score_per_min": 78.52913333209587,
+    "kd": 54.8,
+    "fires_per_min": 21.52284075510924,
+    "weapon_mix": {
+     "torpedo": 0.0,
+     "gun": 0.43,
+     "missile": 0.55,
+     "aircraft": 0.01,
+     "SAM": 0.0
+    }
+   },
+   "Clemenceau": {
+    "level": 9,
+    "family": "carrier",
+    "share": 0.2495763888888889,
+    "score_per_min": 75.40276579760149,
+    "kd": 34.5,
+    "fires_per_min": 15.058849717577006,
+    "weapon_mix": {
+     "torpedo": 0.02,
+     "gun": 0.4,
+     "missile": 0.13,
+     "aircraft": 0.4,
+     "depth/mine": 0.02,
+     "SAM": 0.03
+    }
+   },
+   "Yamato": {
+    "level": 9,
+    "family": "surface",
+    "share": 0.2127638888888889,
+    "score_per_min": 62.40289836151185,
+    "kd": 58.0,
+    "fires_per_min": 3.241073177100333,
+    "weapon_mix": {
+     "torpedo": 0.01,
+     "gun": 0.25,
+     "missile": 0.05,
+     "aircraft": 0.68,
+     "depth/mine": 0.01
+    }
+   },
+   "Kirov": {
+    "level": 8,
+    "family": "surface",
+    "share": 0.114875,
+    "score_per_min": 74.06601378309757,
+    "kd": 55.0,
+    "fires_per_min": 15.01632208922742,
+    "weapon_mix": {
+     "torpedo": 0.2,
+     "gun": 0.17,
+     "missile": 0.54,
+     "aircraft": 0.04,
+     "SAM": 0.05
+    }
+   },
+   "Ohio": {
+    "level": 7,
+    "family": "submarine",
+    "share": 0.01967361111111111,
+    "score_per_min": 13.55453582774444,
+    "kd": 8.0,
+    "fires_per_min": 8.471584892340275,
+    "weapon_mix": {
+     "torpedo": 0.34,
+     "missile": 0.66
+    }
+   },
+   "Montana": {
+    "level": 8,
+    "family": "surface",
+    "share": 0.014618055555555556,
+    "score_per_min": 175.72446555819477,
+    "kd": 5.0,
+    "fires_per_min": 12.826603325415677,
+    "weapon_mix": {
+     "torpedo": 0.02,
+     "gun": 0.83,
+     "missile": 0.02,
+     "aircraft": 0.11,
+     "depth/mine": 0.01
+    }
+   },
+   "Moskva": {
+    "level": 7,
+    "family": "carrier",
+    "share": 0.013645833333333333,
+    "score_per_min": 39.083969465648856,
+    "kd": 5.0,
+    "fires_per_min": 7.938931297709924,
+    "weapon_mix": {
+     "torpedo": 0.63,
+     "missile": 0.08,
+     "aircraft": 0.27,
+     "SAM": 0.02
+    }
+   },
+   "Essex": {
+    "level": 6,
+    "family": "carrier",
+    "share": 0.0007291666666666667,
+    "score_per_min": 142.85714285714286,
+    "kd": 0.0,
+    "fires_per_min": 25.714285714285715,
+    "weapon_mix": {
+     "gun": 1.0
+    }
+   }
+  },
+  "family_share": {
+   "surface": 0.716375,
+   "carrier": 0.2639513888888889,
+   "submarine": 0.01967361111111111
+  },
+  "death_causes": {
+   "terrain": 2,
+   "weapon": 8,
+   "ram/collision": 1
+  },
+  "score_by_10min": [
+   67.0,
+   87.83125,
+   65.5375
+  ],
+  "board_rank_by_10min": [
+   0.9848485113383504,
+   0.9848485118549434,
+   0.9840577906928957
+  ]
+ }
+}

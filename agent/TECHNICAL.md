@@ -38,7 +38,7 @@ Build the client before the server: the server embeds the built client.
 ## Quick start
 
 ```bash
-./run_game.sh models/bc_v6.pt 12 40 models/elite_15M.pt
+./run_game.sh models/bc_v6.pt 12 40 models/elite_v2b_3M.pt
 ```
 
 Arguments: main policy, NN bots, built-in bots, optional elite policy. Run it from this folder;
@@ -78,7 +78,8 @@ plus 32 built-in bots per world, 8 worlds, 60 game-minutes each. "Score" is the 
 | Random actions | 3.9 ± 1.1 | 0.03 | 0.15 | 0.2 |
 
 The final elite scores about 2× as much as the built-in bot, kills about 7× as often and dies
-about half as often. In the same test batch, 15M beat 6M on kills (0.81 vs 0.52/min) with the
+about half as often. The game's `NN Elite` is now the v2b elite (`models/elite_v2b_3M.pt`),
+trained for the scoreboard; see [Toward the top 10%](#toward-the-top-10-the-v2b-elite). In the same test batch, 15M beat 6M on kills (0.81 vs 0.52/min) with the
 same death rate.
 The ± is a 95% interval within one evaluation batch; separate batches of the same policy have
 varied by more than that (up to ~±5), so only same-batch comparisons are used for decisions.
@@ -136,6 +137,84 @@ Yasen, Zumwalt, Kirov; level 9: Yamato, Seawolf, Clemenceau), but cost ~11% scor
 more in the crowded game mix (board rank 77% → 68%): the elite never practised submarines and
 carriers in training (Seawolf 33/min vs Yamato 63/min at level 9; the Clemenceau carrier does
 well at 79/min).
+
+### Toward the top 10% (the v2b elite)
+
+**Target.** In the game's setup (`NN Elite` among 11 imitation NN bots and 40 built-in bots), an
+average scoreboard position over an hour in the top 10% (≥ 90%). Twelve NN ships can't all be
+there: the top 10% of 52 ships is 5 places, and 12 ships holding the top 12 places would still
+average 89%.
+
+**Where the 15M elite stood** (`pressure_test.py`, game conditions: NN-bot rules, lead aim,
+personas with ratings): 78%, by 10-minute block 42 / 76 / 85 / 87 / 87 / 90%. It earned 62.6
+points/min, but deaths wiped 25.3/min: a death keeps only about 60% of the score, while the reward
+charged a flat −4 for it. Its skill audit (`skills.py`): submarines never dived (the dive
+probability was about 10⁻⁶), SAMs answered 5% of the incoming missiles and aircraft they could
+hit, decoys none of the closing torpedoes, and active sensors stayed on ~95% of the time in every
+ship.
+
+**What changed in training** (`ppo_entity.py`):
+
+| Change | Why |
+|---|---|
+| `--reward board`: a death also costs the score it wipes (0.05 per point, at most 50 per death) | Protect the lead: bold with little to lose, careful when rich |
+| `--ship-style` and 4 frozen elite copies per world (4 learners, 40 bots) | Practise every ship family and its weapons against the toughest opponents |
+| `--free-heads submerge,active`, `--dive-bias 17` | Skills the starting policy never tried: no KL anchor on them, and submarines start diving 95% of the time |
+| `--defense-coef 0.05` (`entity_policy.defense_labels`) | An auxiliary imitation loss shows a move PPO would never sample: a SAM at the nearest incoming missile or aircraft, a decoy against a closing torpedo or missile |
+| `--doctrine-coef 0.05` (`doctrine_labels`, v4 only) | Carriers launch aircraft at ships in reach; submerged submarines keep active sonar off |
+| `--world-minutes 10` | More early-game practice |
+| Checkpoints chosen by pressure tests | PPO drifted: v2 was best at 1M steps and over-cautious by 4M (66 → 48 score/min); v2b's checkpoints scored 74 / 74 / 85 / 67% |
+| 2–3 runs in parallel, 32 worlds each | The loop waits on the game worlds (CPU) and the GPU in turn; parallel runs kept the CPU at ~90–98% and the GPU at 55–100% |
+
+Runs: v2 (board reward, personas, self-play, diving; 4M steps), v2b (v2 + defence lessons +
+10-minute worlds; 4M), v3 (v2's 1M checkpoint + defence lessons, KL 0.05 throughout; 1.5M), v4
+(v2b + aircraft and stealth lessons; 1.5M).
+
+**Results** (fresh worlds per scenario; ranks are averages over every game-minute):
+
+| Model | Top 10% scenario: rank (after minute 20) | Crowd rank | Hostile: rank, deaths/min | Rich start: net score/min | Skill checks |
+|---|---|---|---|---|---|
+| elite 15M (before) | 78% (87%) | 66% | 66%, 0.108 | 38.8 | 1/5 |
+| v2 at 1M steps | 83% (92%) | 63% | 67%, 0.087 | 42.8 | 3/5 |
+| v2 (4M) | 80% (89%) | 65% | 73%, 0.083 | 28.6 | 3/5 |
+| **v2b at 3M (the new elite)**, two runs | **85% (93%), 85% (93%)** | 69% | **76%, 0.075** | 27.8 | **5/5** |
+| v2b (4M) | 67% (79%) | 67% | 73%, 0.069 | 42.1 | 5/5 |
+| v3 | 83% (90%) | 66% | 71%, 0.069 | 30.1 | 4/5 |
+| v4 | 81% (90%) | **70%** | 69%, 0.100 | 29.1 | 5/5 |
+
+**The new elite is v2b's 3M checkpoint** (`models/elite_v2b_3M.pt`): 85% in two independent runs of the top-10%
+scenario, 93% after the first 20 minutes, 0.04 deaths/min against 0.087, the best hostile rank and
+second-best crowd rank, and all five skill checks. Starting rich it holds first place like every
+model, but nets less per minute than the old elite (27.8 vs 38.8): it fights less when ahead. Its
+measured ship ratings are `ship_ratings.tsv`. **Not reached: 90% over
+the whole hour.** From minute 20 it holds 90–95%, but the first 10 minutes average about 55%:
+everyone starts at 0 (ties count as the middle) and small boats earn little.
+
+**Skills, before and after** (skills scenario: every ship family, 32 ships × 30 minutes):
+
+| | 15M (before) | v2b 3M (new elite) | v4 |
+|---|---|---|---|
+| submarines submerged (when threatened) | 0% (0%) | 91% (95%) | 99% (99%) |
+| SAM against incoming missiles and aircraft | 5% | 63% | 94% |
+| decoy against closing torpedoes and missiles | 0% | 26% | 97% |
+| depth charges against submarines | 35% | 39% | 39% |
+| aircraft against ships | 64% | 28% | 45% |
+| active sonar while submerged | – | 93% | 1% |
+
+v4 learned every skill best, including stealth (active sensors on: submarines 1%, carriers 26%,
+surface ships 81%), and is the best in crowds, but it plays safer and scores less (top 10%: 81%).
+It ships as a second style: `./run_game.sh models/elite_v4.pt 12 40 models/elite_v2b_3M.pt` gives stealthy, defensive NN bots
+around an aggressive elite.
+
+**Pressure scorecard** (`pressure_test.py --report`): the 15M elite passed 3 of 11 checks, the new
+elite 8 of 11. It fails the top-10% target (85% < 90%), the crowd target (69% < 80%) and the
+hostile rank target (76% < 85%).
+
+**Lessons.** The last checkpoint isn't the best: test checkpoints and keep a firm KL anchor once a
+policy is good. Exploration bonuses (the dive bias) teach a move but not its timing: v2's
+submarines dived 99% of the time and stopped attacking (TypeViic 13 → 4 score/min), which the
+ship ratings then steer around. Moves PPO would almost never sample (SAMs, decoys) need a
+demonstration; an auxiliary imitation loss on the situation took SAM use from 5% to 87% (v2b).
 
 ---
 
@@ -309,7 +388,7 @@ kills at the same death rate). Late in the run the policy drifted far from the i
 |---|---|
 | `../server/src/train.rs` | Headless training mode, observation/action encoding, expert labels, collision guard, lead aim, ship personas, `--agent-kind`, scoreboard rank |
 | `../server/src/nn_bots.rs` | NN control of engine bots and `AI…` autopilot players in the normal server |
-| `../server/src/player.rs` | `nn_driven` / `has_bot_rules`: NN bots play by player rules (used in `world_mutation.rs`, `world_inbound.rs`, `world_spawn.rs`) |
+| `../server/src/player.rs` | `nn_driven` / `has_bot_rules`: NN bots play by player rules (used in `world_mutation.rs`, `world_inbound.rs`, `world_spawn.rs`, and `bot.rs`, whose bots spare small NN bots as they spare small players) |
 | `../server/src/bot.rs` | Built-in bot (now also exposes its firing solution for labels) |
 | `../server/src/world_mutation.rs` | Damage-dealt statistic used by the elite reward |
 | `../server/src/server.rs` | Scoreboard shows everyone (`LEADERBOARD_SIZE`, `LIVEBOARD_BOTS`); NN hooks |
@@ -318,13 +397,18 @@ kills at the same death rate). Late in the run the policy drifted far from the i
 | `entity_policy.py` | Entity-transformer policy, action/label conversion, save/load |
 | `train_bc_entity.py` | Imitation (DAgger) |
 | `ppo_entity.py` | PPO with KL anchor, fp16, frozen opponents, reward presets |
-| `evaluate.py` | Fresh-world evaluation, per-vehicle stats, death causes, damage per shot, scoreboard score and rank, time per ship family; `--agent-kind`, `--ship-style`, `--no-lead` |
+| `evaluate.py` | Fresh-world evaluation, per-vehicle stats, death causes, damage per shot, scoreboard score and rank, score lost to deaths, time per ship family; `--agent-kind`, `--ship-style`, `--ship-ratings`, `--no-lead`, `--opponents`, `--start-score`, `--bot-aggression`, `--skills` |
+| `skills.py` | Skill audit (`evaluate.py --skills`): per weapon class, how often it answers the situations that weapon exists for; diving, sensors, damage taken per ship family; target choice |
+| `pressure_test.py` | Pressure tests: hard scenarios with pass/fail targets, run as parallel processes (`runs/pressure/`) |
+| `ship_ratings.py` | Ship ratings (score/min per ship for a policy) for personas; the game server reads `ship_ratings.tsv` |
+| `tests/test_server_rules.py` | Runs `server self-test` (lead aim, personas, player rules for NN bots) and checks the score-lost info |
 | `serve_policy.py` | Runs main + elite policies for the game server |
 | `plot_training.py` | 3D viridis chart (`runs/training.png`) and 2D chart |
 | `plot_nn_3d.py` | 3D views of the networks: training losses, loss landscape, the elite's neurons at one game moment |
 | `run_game.sh` | Starts the playable server with NN bots |
-| `models/` | Trained networks: `bc_v6.pt` (imitation), `ppo_v5.pt`, `elite_6M.pt`, `elite_15M.pt` (final elite, the best) |
-| `results/` | Evaluation results (`evals.json`) and charts, including the final elite |
+| `models/` | Trained networks: `bc_v6.pt` (imitation), `ppo_v5.pt`, `elite_6M.pt`, `elite_15M.pt`, `elite_v2b_3M.pt` (the current elite), `elite_v4.pt` (best skills; a second style) |
+| `ship_ratings.tsv` | The current elite's ship ratings, read by the game server through `run_game.sh` |
+| `results/` | Evaluation results (`evals.json`), pressure-test results (`pressure/`) and charts |
 | `train_ppo.py`, `train_bc.py` | Earlier Stable-Baselines3 MLP versions (v1–v4), kept for reference |
 
 One server build (`server/target`) serves both the game and training (`server train`). The
@@ -348,6 +432,10 @@ After Setup, from this folder:
     --device mps --agents 2 --bots 32 --procs 8 --minutes 60 --save "elite"
 .venv/bin/python evaluate.py models/elite_15M.pt --device mps --agents 12 --bots 40 --procs 4 \
     --minutes 60 --agent-kind nn-bot --ship-style   # as in the game: 12 NN bots + 40 built-in bots
+.venv/bin/python ppo_entity.py --init models/elite_15M.pt --reward board --ship-style --agents 4 --bots 40 \
+    --opponents 4 --opponent-policy models/elite_15M.pt --kl-start 0.05 --kl-end 0.01 --world-minutes 10 \
+    --procs 32 --steps 4000000 --free-heads submerge,active --dive-bias 17 --defense-coef 0.05 --run ppo_elite2b
+.venv/bin/python pressure_test.py models/elite_v2b_3M.pt --ratings ship_ratings.tsv --label "new elite"   # scorecard
 .venv/bin/python plot_training.py
 .venv/bin/python -m pytest -q
 ```

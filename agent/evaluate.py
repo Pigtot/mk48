@@ -19,8 +19,9 @@ import numpy as np
 
 from pathlib import Path
 
-from mk48env import (BOARD_RANK, DAMAGE_DEALT, DEATH_CAUSE, DEATH_CAUSES, DIED, FIRED, KILLS, LEVEL, SCORE, SCORE_DELTA, SERVER,
-                     Mk48VecEnv, ServerConfig)
+from mk48env import (BOARD_RANK, DAMAGE_DEALT, DEATH_CAUSE, DEATH_CAUSES, DIED, FIRED, KILLS, LEVEL, SCORE, SCORE_DELTA,
+                     SCORE_LOST, SERVER, Mk48VecEnv, ServerConfig)
+from skills import SkillAudit, print_report
 
 
 TYPES_FILE = Path(__file__).with_name("entity_types.tsv")  # from `server types`
@@ -53,18 +54,42 @@ def ci95(x: np.ndarray) -> tuple[float, float]:
     return float(x.mean()), float(1.96 * x.std(ddof=1) / np.sqrt(len(x))) if len(x) > 1 else 0.0
 
 
+def policy_actions(net, obs: np.ndarray, act_dim: int, device: str, deterministic: bool = True) -> np.ndarray:
+    """Actions of an entity policy, padded for older 9-action policies on a 10-action server (no salvo)."""
+    import torch
+
+    import entity_policy as ep
+
+    with torch.no_grad():
+        discrete = ep.sample(net(torch.as_tensor(obs, device=device)), deterministic=deterministic)
+    actions = ep.to_env(discrete.cpu().numpy(), obs, net.layout)
+    if actions.shape[1] < act_dim:
+        actions = np.hstack([actions, -np.ones((len(actions), act_dim - actions.shape[1]), np.float32)])
+    return actions
+
+
 def evaluate(policy: str, minutes: float, agents: int, bots: int, procs: int, device: str,
              stochastic: bool = False, server_path: Path = SERVER, agent_kind: str = "player",
-             ship_style: bool = False, lead_aim: bool = True) -> dict:
+             ship_style: bool = False, lead_aim: bool = True, ship_ratings: Path | None = None,
+             skills: bool = False, opponents: int = 0, opponent_policy: str | None = None,
+             start_score: int = 0, bot_aggression: float = 1.0) -> dict:
+    """With `opponents`, each world also has that many ships driven by `opponent_policy`, which play
+    but aren't measured (e.g. the elite among imitation NN bots, as in the game)."""
     scripted = policy == "bot"
     expert = policy == "expert"  # the bot's choices replayed through the agent's action space
+    if opponents and (not policy.endswith(".pt") or not opponent_policy):
+        raise ValueError("opponents need an entity policy (.pt) and --opponent-policy")
+    per_world = agents + opponents
     env = Mk48VecEnv(
         n_procs=procs,
-        server=ServerConfig(agents=agents, bots=bots, scripted_agents=scripted, expert_labels=expert,
+        server=ServerConfig(agents=per_world, bots=bots, scripted_agents=scripted, expert_labels=expert,
                             agent_kind=agent_kind, ship_style=ship_style, lead_aim=lead_aim,
+                            ship_ratings=ship_ratings, start_score=start_score, bot_aggression=bot_aggression,
                             server_path=server_path),
         max_episode_steps=10**9,
     )
+    mine = np.array([i for i in range(env.num_envs) if i % per_world < agents])
+    others = np.array([i for i in range(env.num_envs) if i % per_world >= agents], dtype=int)
     model = None
     entity = None
     if policy.endswith(".pt"):
@@ -74,6 +99,7 @@ def evaluate(policy: str, minutes: float, agents: int, bots: int, procs: int, de
 
         entity, _, _ = ep.load(policy, device)
         entity.eval()
+        opp = ep.load(opponent_policy, device)[0].eval() if opponents else None
     elif policy not in ("random", "bot", "expert"):
         from stable_baselines3 import PPO
 
@@ -82,24 +108,23 @@ def evaluate(policy: str, minutes: float, agents: int, bots: int, procs: int, de
     steps_per_minute = int(60 / (env.server_cfg.ticks_per_step * 0.1))
     n_steps = int(minutes * steps_per_minute)
     obs = env.reset()
-    per_min = {k: np.zeros((n_steps // steps_per_minute, env.num_envs))
-               for k in ("score", "kills", "deaths", "fired", "damage")}
+    per_min = {k: np.zeros((n_steps // steps_per_minute, len(mine)))
+               for k in ("score", "kills", "deaths", "fired", "damage", "lost")}
     # What the scoreboard shows: current score (which deaths can wipe, unlike score/min) and position.
     board = {k: np.zeros_like(per_min["score"]) for k in ("board_score", "board_rank")}
-    max_level = np.zeros(env.num_envs)
+    max_level = np.zeros(len(mine))
     causes = np.zeros(len(DEATH_CAUSES))
     # Per-vehicle stats (only when the observation carries the exact ship type).
     per_type = env.observation_space.shape[0] == V6_OBS_DIM
     by_type: dict[int, np.ndarray] = {}  # id -> [steps, score, kills, deaths, fires, fires per class...]
+    audit = SkillAudit(len(mine)) if skills else None
     t0 = time.perf_counter()
     for t in range(n_steps):
         act_dim = env.action_space.shape[0]
         if entity is not None:
-            with torch.no_grad():
-                discrete = ep.sample(entity(torch.as_tensor(obs, device=device)), deterministic=not stochastic)
-            actions = ep.to_env(discrete.cpu().numpy(), obs, entity.layout)
-            if actions.shape[1] < act_dim:  # older 9-action policy on a 10-action server: no salvo
-                actions = np.hstack([actions, -np.ones((len(actions), act_dim - actions.shape[1]), np.float32)])
+            actions = policy_actions(entity, obs, act_dim, device, deterministic=not stochastic)
+            if len(others):
+                actions[others] = policy_actions(opp, obs[others], act_dim, device)
         elif model is not None:
             actions, _ = model.predict(obs, deterministic=not stochastic)
         elif expert:
@@ -114,6 +139,10 @@ def evaluate(policy: str, minutes: float, agents: int, bots: int, procs: int, de
         prev_obs = obs
         obs, _, _, _ = env.step(actions)
         info = env.last_info
+        if len(others):  # opponents play but only the evaluated agents are measured
+            prev_obs, actions, info = prev_obs[mine], actions[mine], info[mine]
+        if audit is not None:
+            audit.update(prev_obs, actions, info)
         if per_type:
             alive = prev_obs[:, 0] > 0.5
             classes = np.clip(((actions[:, 5] + 1) * 0.5 * V6_CLASSES).astype(int), 0, V6_CLASSES - 1)
@@ -135,6 +164,8 @@ def evaluate(policy: str, minutes: float, agents: int, bots: int, procs: int, de
             per_min["fired"][m] += info[:, FIRED]
             if env.has_damage_dealt:
                 per_min["damage"][m] += info[:, DAMAGE_DEALT]
+            if info.shape[1] > SCORE_LOST and env.has_board_rank:
+                per_min["lost"][m] += info[:, SCORE_LOST]
             board["board_score"][m] += info[:, SCORE] / steps_per_minute
             if env.has_board_rank:
                 board["board_rank"][m] += info[:, BOARD_RANK] / steps_per_minute
@@ -146,18 +177,21 @@ def evaluate(policy: str, minutes: float, agents: int, bots: int, procs: int, de
     env.close()
 
     damage = per_min.pop("damage")
+    lost = per_min.pop("lost")
+    result_lost = ci95(lost.ravel())
     result = {k: ci95(v.ravel()) for k, v in per_min.items()}
     if env.has_damage_dealt:
         # Weapon damage dealt in boats' worth (1 = a whole boat), and per decision that fired.
         result["damage"] = ci95(damage.ravel())
         result["damage_per_shot"] = float(damage.sum() / max(per_min["fired"].sum(), 1))
+    result["score_lost"] = result_lost  # score per minute that deaths wiped from the scoreboard
     result["board_score"] = ci95(board["board_score"].ravel())
     if env.has_board_rank:
         result["board_rank"] = ci95(board["board_rank"].ravel())
     kills, deaths = per_min["kills"].sum(), per_min["deaths"].sum()
     result["kd"] = kills / max(deaths, 1)
     result["max_level_mean"] = float(max_level.mean())
-    result["agent_steps_per_sec"] = n_steps * env.num_envs / elapsed
+    result["agent_steps_per_sec"] = n_steps * len(mine) / elapsed
     if by_type:
         table = type_table()
         total = sum(r[0] for r in by_type.values())
@@ -175,6 +209,8 @@ def evaluate(policy: str, minutes: float, agents: int, bots: int, procs: int, de
                 "kd": float(r[2] / max(r[3], 1)), "fires_per_min": float(r[4] / minutes), "weapon_mix": mix,
             }
         result["family_share"] = families
+    if audit is not None:
+        result["skills"] = audit.report(steps_per_minute)
     if causes.sum():
         result["death_causes"] = {DEATH_CAUSES[i]: int(c) for i, c in enumerate(causes) if c}
     # Score/min per 10-minute block, to separate early game from steady state.
@@ -202,10 +238,20 @@ def main() -> None:
     p.add_argument("--ship-style", action="store_true",
                    help="random per-life vehicle preferences (as NN bots in the game) instead of the ship-family head")
     p.add_argument("--no-lead", action="store_true", help="aim at targets' current position instead of leading them")
+    p.add_argument("--ship-ratings", type=Path, default=None,
+                   help="with --ship-style: choose only among ships the network plays well (ship_ratings.py)")
+    p.add_argument("--opponents", type=int, default=0,
+                   help="ships per world driven by --opponent-policy (play but aren't measured)")
+    p.add_argument("--opponent-policy", default=None)
+    p.add_argument("--start-score", type=int, default=0, help="agents start with this score")
+    p.add_argument("--bot-aggression", type=float, default=1.0, help="built-in bots' aggression (game default 1)")
+    p.add_argument("--skills", action="store_true",
+                   help="audit weapon and feature use: response rates, diving, sensors, target choice")
     p.add_argument("--save", metavar="LABEL", help="append the result to runs/evals.json under this label")
     a = p.parse_args()
     r = evaluate(a.policy, a.minutes, a.agents, a.bots, a.procs, a.device, a.stochastic, a.server, a.agent_kind,
-                 a.ship_style, not a.no_lead)
+                 a.ship_style, not a.no_lead, a.ship_ratings, a.skills, a.opponents, a.opponent_policy,
+                 a.start_score, a.bot_aggression)
     print(f"policy={a.policy}  ({a.agents * a.procs} agents x {a.minutes} game-min, as {a.agent_kind})")
     for k in ("score", "kills", "deaths", "fired"):
         mean, ci = r[k]
@@ -213,6 +259,8 @@ def main() -> None:
     if "damage" in r:
         mean, ci = r["damage"]
         print(f"  {'damage/min':12s} {mean:8.2f} ± {ci:.2f}   (boats' worth; per shot {r['damage_per_shot']:.3f})")
+    mean, ci = r["score_lost"]
+    print(f"  {'lost/min':12s} {mean:8.2f} ± {ci:.2f}   (score that deaths wiped)")
     mean, ci = r["board_score"]
     print(f"  {'board score':12s} {mean:8.1f} ± {ci:.1f}   (current score, as on the scoreboard)")
     if "board_rank" in r:
@@ -236,6 +284,8 @@ def main() -> None:
         print("  ships by level (time share):")
         for level in sorted(levels):
             print(f"    {level:2d}: " + ", ".join(f"{n} {s:.1%}" for n, s in sorted(levels[level], key=lambda x: -x[1])))
+    if r.get("skills"):
+        print_report(r["skills"])
     if r.get("death_causes"):
         print("  death causes: " + ", ".join(f"{k} {v}" for k, v in r["death_causes"].items()))
     if r["score_by_10min"]:
@@ -248,7 +298,10 @@ def main() -> None:
         evals = [e for e in evals if e["label"] != a.save]
         evals.append({"label": a.save, "policy": a.policy, "minutes": a.minutes,
                       "agents": a.agents * a.procs, "bots_per_world": a.bots, "agent_kind": a.agent_kind,
-                      "ship_style": a.ship_style, "lead_aim": not a.no_lead, **r})
+                      "ship_style": a.ship_style, "lead_aim": not a.no_lead,
+                      "ship_ratings": str(a.ship_ratings) if a.ship_ratings else None,
+                      "opponents": a.opponents, "opponent_policy": a.opponent_policy,
+                      "start_score": a.start_score, "bot_aggression": a.bot_aggression, **r})
         path.parent.mkdir(exist_ok=True)
         path.write_text(json.dumps(evals, indent=1))
 

@@ -24,6 +24,8 @@ export MK48_NN_POLICY="$(abs "$policy")"
 export MK48_NN_PYTHON="$(pwd)/.venv/bin/python"
 export MK48_NN_SCRIPT="$(pwd)/serve_policy.py"
 if [ -n "$elite" ]; then export MK48_NN_ELITE_POLICY="$(abs "$elite")"; fi
+# Ship personas choose only among ships the network plays well (python ship_ratings.py <policy>).
+if [ -f ship_ratings.tsv ]; then export MK48_NN_SHIP_RATINGS="$(pwd)/ship_ratings.tsv"; fi
 
 if lsof -nP -iTCP:8443 -sTCP:LISTEN >/dev/null 2>&1; then
   echo "A server is already running on port 8443; stop it first." >&2

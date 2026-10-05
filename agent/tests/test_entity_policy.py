@@ -101,3 +101,37 @@ def test_v7_expert_labels_mask_salvo():
     labels, masks = ep.from_expert(expert, obs, ep.V7)
     assert labels.shape == (3, len(ep.V7.head_names))
     assert (masks[:, ep.H["salvo"]] == 0).all()
+
+
+def test_defense_labels():
+    """SAM against an incoming missile a ready SAM can hit; decoy against a closing torpedo."""
+    obs = torch.zeros(3, ep.V7.obs_dim)
+
+    def contact(row, k, features):
+        for i, v in features.items():
+            obs[row, ep.V7.self_dim + k * ep.V7.contact_dim + i] = v
+
+    contact(0, 2, {0: 1, 14: 1, 21: 1, 36: 1, 1: 0.3, 3: -1.0, 7: 0.3})  # missile, SAM can hit
+    contact(1, 5, {0: 1, 14: 1, 19: 1, 1: 0.2, 3: -1.0, 7: 0.2})  # torpedo closing
+    obs[1, 19] = 1  # own decoy ready
+    contact(2, 1, {0: 1, 9: 1, 7: 0.1})  # a ship: nothing to defend against
+    rows, target, weapon = ep.defense_labels(obs)
+    assert rows.tolist() == [True, True, False]
+    assert target[:2].tolist() == [3, 6] and weapon[:2].tolist() == [5, 6]
+
+
+def test_doctrine_labels():
+    """Carriers launch aircraft at ships in reach; submerged submarines keep active sonar off."""
+    obs = torch.zeros(3, ep.V7.obs_dim)
+
+    def contact(row, k, features):
+        for i, v in features.items():
+            obs[row, ep.V7.self_dim + k * ep.V7.contact_dim + i] = v
+
+    obs[0, 34] = 1  # own family: carrier
+    contact(0, 4, {0: 1, 9: 1, 34: 1, 7: 0.4})  # enemy ship a ready aircraft can reach
+    obs[1, 11] = obs[1, 10] = 1  # a submarine, submerged
+    contact(2, 1, {0: 1, 9: 1, 34: 1, 7: 0.2})  # not a carrier: nothing to teach
+    air, target, stealth = ep.doctrine_labels(obs)
+    assert air.tolist() == [True, False, False] and target[0].item() == 5
+    assert stealth.tolist() == [False, True, False]

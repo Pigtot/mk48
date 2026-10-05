@@ -30,6 +30,9 @@ and so on.*
 - **Improved after watching it play:** fair rules for the AI in the real game, smarter aiming,
   and a different ship path for every AI bot (see
   [What we fixed after watching it play](#what-we-fixed-after-watching-it-play)).
+- **A new NN Elite** that protects its lead, dives in submarines, shoots down missiles and is in
+  the top 10% of a busy scoreboard after 20 minutes (see
+  [Making it a top player](#making-it-a-top-player)).
 
 ---
 
@@ -41,7 +44,7 @@ the steps are in **[Setup](#setup-once)** below.
 Then start the game with AI bots (from this `agent` folder):
 
 ```bash
-./run_game.sh models/bc_v6.pt 12 40 models/elite_15M.pt
+./run_game.sh models/bc_v6.pt 12 40 models/elite_v2b_3M.pt
 ```
 
 That means: 12 AI bots (the last one is the elite) and 40 of the game's normal bots. Then:
@@ -55,7 +58,8 @@ That means: 12 AI bots (the last one is the elite) and 40 of the game's normal b
      click to fire, press 1–9 to pick a weapon, R to dive with a submarine, and scroll to zoom.
 3. To stop the game, press **Ctrl+C** in the terminal where it's running.
 
-To make all 12 AI bots elites, give only the elite: `./run_game.sh models/elite_15M.pt 12 40`.
+For a harder game with two AI styles, use the careful, stealthy v4 for the other AI bots:
+`./run_game.sh models/elite_v4.pt 12 40 models/elite_v2b_3M.pt`.
 
 ---
 
@@ -263,8 +267,65 @@ random personality for each life, like a submarine captain or a carrier admiral,
 which ship to upgrade to at every level. In a test, the AI spent **24% of its time in submarines
 and 7% in aircraft carriers** (before: none). The trade-off is about **11% fewer points**, and in
 a busy game its average place on the scoreboard drops from 77% to 68%, because the AI never
-practised submarines and carriers. Practising with personalities switched on should fix that;
-that's the next step.
+practised submarines and carriers. The next section trains it with personalities switched on,
+and the game now picks only ships the AI plays well.
+
+---
+
+## Making it a top player
+
+Even after those fixes, our best AI wasn't in the top 10% of the real game's scoreboard. So we set
+a clear goal, built an exam, and trained new versions until one passed most of it.
+
+**The goal.** In a game with 52 ships, be in the top 10% of the scoreboard (the top 5 places), on
+average over an hour.
+
+**What was holding it back.**
+
+- **Sinking cost more than it knew.** A ship that sinks loses about 40% of its points. In practice
+  the AI got the same small penalty for sinking with 50 points or with 5,000, so it took big risks
+  while ahead. It earned 63 points a minute and lost 25 a minute to sinking.
+- **It never used some of its tools.** Submarines never dived. It almost never fired anti-air
+  missiles (SAMs) at incoming missiles, and never used decoys against torpedoes.
+- **A slow start.** In the smallest boats it's no better than the game's own bots.
+
+**What we changed.**
+
+1. **"Protect the lead."** In practice, sinking now costs the points it really loses, so the AI is
+   bold when it has little and careful when it's ahead.
+2. **Practice with everything.** Every AI ship gets a random personality while practising, so it
+   trains in submarines, carriers and battleships, and against copies of itself, the toughest
+   opponents there are.
+3. **Lessons for new skills.** Some moves were so unlikely that trial and error would never find
+   them. So we added lessons, like a coach showing a move once: dive in a submarine, fire a SAM at
+   an incoming missile, launch a decoy against a torpedo. The AI keeps what helps it win.
+4. **An exam.** The pressure tests put each version through hard situations with pass/fail
+   targets: the real game's setup, a crowd of copies of itself, extra-aggressive bots, starting
+   rich, and every type of ship.
+5. **Picking the best moment.** Training doesn't improve smoothly: one version was at its best a
+   quarter of the way through and got worse after. We tested saved versions and kept the best one.
+6. **Using the whole computer.** Two or three trainings and many tests ran at once, so the
+   processor and the graphics chip stayed close to fully busy.
+
+**Results.** The old NN Elite and the new one, in the real game's setup:
+
+| | Old elite | New elite |
+|---|---|---|
+| Average place on the scoreboard over an hour (100% = first) | 78% | **85%** |
+| …after the first 20 minutes | 87% | **93%** (top 10%) |
+| Times sunk per minute | 0.087 | **0.04** |
+| Submarines dive | never | **91% of the time** |
+| Fires a SAM at an incoming missile or plane | 5% | **63%** |
+| Uses a decoy against an incoming torpedo | never | **26%** |
+| Exam checks passed | 3 of 11 | **8 of 11** |
+
+From 20 minutes in, it's in the top 10%. Over the whole hour it averages 85%, short of the 90%
+goal: at the start everyone has zero points, and the AI is weakest in the smallest boats.
+
+A second new AI, **v4**, learned every skill best. It dives, keeps its sonar quiet under water so
+it can't be heard, and fires SAMs at 94% of incoming missiles and decoys at 97% of incoming
+torpedoes. It plays more carefully and scores a little less, so it makes a good style for the
+other AI bots.
 
 ---
 

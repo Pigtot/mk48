@@ -27,6 +27,9 @@ What was added to the game itself:
 - **Smarter aim:** AI ships aim where a moving ship will be, not where it is now.
 - **Ship personalities:** every AI ship picks its own upgrade path (submarines, carriers,
   battleships…) instead of all following the same one.
+- **A new elite trained for the scoreboard:** it protects its lead, dives, shoots down missiles,
+  and is in the top 10% of a busy game after 20 minutes. Pressure tests (`agent/pressure_test.py`)
+  check every version against hard scenarios.
 - **A scoreboard that shows everyone**, bots included (`server/src/server.rs` and the engine copy
   in `vendor/kodiak`).
 

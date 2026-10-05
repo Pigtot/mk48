@@ -198,6 +198,48 @@ def kl(ref_logits: dict[str, torch.Tensor], logits: dict[str, torch.Tensor]) -> 
     return total
 
 
+def defense_labels(obs: torch.Tensor, layout: Layout = V7, near: float = 0.35):
+    """Defensive moves the elite never learned (it fired SAMs in 5% of the situations they exist
+    for and decoys in none), as labels for an auxiliary imitation loss: launch a decoy against the
+    nearest torpedo or missile closing in within `near` of sensor range, else fire a SAM at the
+    nearest incoming missile or aircraft that a ready SAM can hit.
+
+    Returns (rows with a lesson, target index for the pointer head (contact + 1), weapon class).
+    Feature indices follow `observe` in server/src/train.rs."""
+    s = obs[:, : layout.self_dim]
+    c = obs[:, layout.self_dim : layout.self_dim + K * layout.contact_dim].reshape(len(obs), K, layout.contact_dim)
+    enemy = (c[..., 0] > 0.5) & (c[..., FRIENDLY] < 0.5)
+    aircraft, weapon = c[..., 8] > 0.5, c[..., 14] > 0.5
+    torpedo, missile = weapon & (c[..., 19] > 0.5), weapon & (c[..., 21] > 0.5)
+    closing = (c[..., 1] * c[..., 3] + c[..., 2] * c[..., 4]) < 0
+    decoy = enemy & (torpedo | missile) & closing & (c[..., 7] < near) & (s[:, 19:20] > 0.5)
+    sam = enemy & (aircraft | missile) & (c[..., 36] > 0.5)
+    inf = torch.full_like(c[..., 7], float("inf"))
+    use_decoy = decoy.any(1)
+    nearest = torch.where(use_decoy[:, None], torch.where(decoy, c[..., 7], inf), torch.where(sam, c[..., 7], inf))
+    rows = use_decoy | sam.any(1)
+    weapon_class = torch.where(use_decoy, 6, 5)
+    return rows, nearest.argmin(1) + 1, weapon_class
+
+
+def doctrine_labels(obs: torch.Tensor, layout: Layout = V7):
+    """Two more skills the elite lost or never had, for the same auxiliary loss: a carrier launches
+    aircraft at the nearest enemy ship that a ready aircraft can reach (v2b answered 17% of those
+    situations, the 15M elite 64%), and a submerged submarine keeps its active sonar off (sonar
+    pings reveal it; the elite left it on ~90% of the time).
+
+    Returns (aircraft rows, target index, stealth rows)."""
+    s = obs[:, : layout.self_dim]
+    c = obs[:, layout.self_dim : layout.self_dim + K * layout.contact_dim].reshape(len(obs), K, layout.contact_dim)
+    enemy_ship = (c[..., 0] > 0.5) & (c[..., FRIENDLY] < 0.5) & (c[..., 9] > 0.5)
+    reach = enemy_ship & (c[..., 34] > 0.5)
+    carrier = s[:, 34] > 0.5  # own ship family: carrier
+    air_rows = carrier & reach.any(1)
+    nearest = torch.where(reach, c[..., 7], torch.full_like(c[..., 7], float("inf"))).argmin(1) + 1
+    stealth_rows = (s[:, 11] > 0.5) & (s[:, 10] > 0.5)  # a submarine, submerged
+    return air_rows, nearest, stealth_rows
+
+
 # --- conversion to / from the server's continuous action vector ----------------------------------
 
 def to_env(actions: np.ndarray, obs: np.ndarray, layout: Layout = V6) -> np.ndarray:

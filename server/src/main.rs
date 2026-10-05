@@ -50,6 +50,7 @@ fn main() -> ExitCode {
     match args.get(1).map(String::as_str) {
         Some("train") => return train::run(&args[2..]),
         Some("types") => return train::print_types(),
+        Some("self-test") => return train::self_test(),
         _ => {}
     }
 

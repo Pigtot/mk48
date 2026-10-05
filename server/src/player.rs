@@ -261,6 +261,11 @@ impl PlayerTupleRepo {
         self.players.remove(&player_id);
     }
 
+    /// Whether this player is an NN-driven bot (see `TempPlayer::nn_driven`).
+    pub fn is_nn_driven(&self, player_id: PlayerId) -> bool {
+        self.borrow_player(player_id).map_or(false, |p| p.nn_driven)
+    }
+
     /// Cannot coincide with mutable references to players.
     pub fn borrow_player(&self, player_id: PlayerId) -> Option<AtomicRef<TempPlayer>> {
         self.get(player_id).map(|pt| pt.borrow_player())

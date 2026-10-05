@@ -35,8 +35,12 @@ SCORE, ALIVE, DIED, KILLS, SCORE_DELTA, HEALTH_LOST, FIRED, LEVEL = range(8)
 DEATH_CAUSE = 8
 DAMAGE_DEALT = 9
 DEATH_CAUSES = ["none", "terrain", "border", "weapon", "ram/collision", "obstacle", "other"]
-# Then the scoreboard position among everyone in the world, bots included (1 = top, 0 = bottom).
+# Then the scoreboard position among everyone in the world, bots included (1 = top, 0 = bottom),
+# and the score a death cost (the scoreboard shows it; SCORE_DELTA only counts gains while alive).
 BOARD_RANK = 10
+SCORE_LOST = 11
+# Most a single death can cost in reward through `death_loss`, so one outlier can't swamp a batch.
+DEATH_LOSS_CAP = 50.0
 # With expert_labels, the last act_dim + 2 info values are the built-in bot's action for the same
 # observation, then valid and aim_valid flags. Use Mk48VecEnv.expert_offset to locate them.
 SERVER_BC = ROOT / "server" / "target-bc" / "release" / "server"
@@ -52,6 +56,7 @@ class RewardConfig:
     damage_taken: float = -0.5  # per full health bar lost
     alive: float = 0.0  # per step survived
     damage_dealt: float = 0.0  # per boat's worth of weapon damage dealt (needs a build with it)
+    death_loss: float = 0.0  # per point of score a death cost (capped per death; needs a build with it)
 
     def components(self, info: np.ndarray) -> dict[str, np.ndarray]:
         out = {
@@ -63,11 +68,16 @@ class RewardConfig:
         }
         if self.damage_dealt and info.shape[1] > DAMAGE_DEALT:
             out["damage_dealt"] = self.damage_dealt * info[:, DAMAGE_DEALT]
+        if self.death_loss and info.shape[1] > SCORE_LOST:
+            out["death_loss"] = -np.minimum(self.death_loss * info[:, SCORE_LOST], DEATH_LOSS_CAP)
         return out
 
 
 # Elite bot: hunts (damage and kills pay well) but dodges and hides (being hit and dying cost more).
 AGGRESSIVE = RewardConfig(score=0.05, kill=3.0, death=-4.0, damage_taken=-1.5, damage_dealt=2.0)
+# Elite tuned for the scoreboard: as AGGRESSIVE, but a death also costs the score it wipes, at the
+# same rate as score gained. Bold when poor, careful when rich ("protect the lead").
+BOARD = RewardConfig(score=0.05, kill=3.0, death=-4.0, damage_taken=-1.5, damage_dealt=2.0, death_loss=0.05)
 
 
 @dataclass
@@ -84,6 +94,8 @@ class ServerConfig:
     agent_kind: str = "player"
     ship_style: bool = False  # random per-life vehicle preferences, as NN bots in the game
     lead_aim: bool = True  # aim ahead of moving targets (False: at their current position)
+    ship_ratings: Path | None = None  # with ship_style: only ships the network plays well (ship_ratings.py)
+    start_score: int = 0  # agents' score when they join (e.g. to test protecting a lead)
     server_path: Path = SERVER
 
     def args(self) -> list[str]:
@@ -106,6 +118,10 @@ class ServerConfig:
             args.append("--ship-style")
         if not self.lead_aim:
             args.append("--no-lead")
+        if self.ship_ratings:
+            args += ["--ship-ratings", str(self.ship_ratings)]
+        if self.start_score:
+            args += ["--start-score", str(self.start_score)]
         return args
 
 

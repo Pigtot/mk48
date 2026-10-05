@@ -4,14 +4,16 @@
 //! Neural-network control for the normal (networked) server.
 //!
 //! Enabled with `MK48_NN_BOTS=<count>` and `MK48_NN_POLICY=<policy file>`; optional
-//! `MK48_NN_ELITE_POLICY`, `MK48_NN_PYTHON`, `MK48_NN_SCRIPT`.
+//! `MK48_NN_ELITE_POLICY`, `MK48_NN_PYTHON`, `MK48_NN_SCRIPT`, `MK48_NN_SHIP_RATINGS`.
 //!
 //! - Engine bots number `0..count` are driven by the network instead of the hand-written logic.
 //!   They are ordinary bots otherwise (leaderboard, names). A count >= `--bots` makes every bot an
 //!   NN bot. With an elite policy, the last of them ("NN Elite") is driven by it.
 //! - Every NN ship has its own vehicle preferences for each life (`ShipPrefs`): a persona such as
 //!   a submarine captain or a carrier admiral, so upgrade paths vary instead of all following the
-//!   network's favourite family. Aim leads moving targets (`lead_point`).
+//!   network's favourite family. With `MK48_NN_SHIP_RATINGS` (`agent/ship_ratings.py`), they
+//!   only choose among ships the network plays well. Aim leads moving targets (`lead_point`).
+//! - Built-in bots spare small NN bots as they spare small players (`Bot::act`'s `nn_driven`).
 //! - NN bots play by player rules, as in training: they keep most of their score on death and
 //!   spawn like players (`TempPlayer::nn_driven`). Bot rules would reset them to level 1-2 on
 //!   every death and often spawn them at random spots.
@@ -33,8 +35,8 @@ use crate::protocol::AsCommandTrait;
 use crate::server::Server;
 use crate::team::TeamRepo;
 use crate::train::{
-    agent_commands, apply_commands, observe, pick_spawn_type, Agent, ShipPrefs, ACT_DIM, MAGIC,
-    OBS_DIM,
+    agent_commands, apply_commands, load_ship_ratings, observe, pick_spawn_type, Agent, ShipPrefs,
+    ACT_DIM, MAGIC, OBS_DIM,
 };
 use crate::world::World;
 use common::protocol::{Command, Spawn};
@@ -77,6 +79,12 @@ impl NnBots {
         let elite_policy = std::env::var("MK48_NN_ELITE_POLICY").ok();
         let python = std::env::var("MK48_NN_PYTHON").unwrap_or_else(|_| "python3".into());
         let script = std::env::var("MK48_NN_SCRIPT").unwrap_or_else(|_| "serve_policy.py".into());
+        if let Ok(path) = std::env::var("MK48_NN_SHIP_RATINGS") {
+            match load_ship_ratings(&path) {
+                Ok(n) => info!("NN ship personas use {n} ship ratings from {path}"),
+                Err(e) => error!("NN ship ratings not used: {e}"),
+            }
+        }
         let mut process = Process::new(&python);
         process.arg(&script).arg(&policy);
         if let Some(elite) = &elite_policy {

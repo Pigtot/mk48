@@ -1,0 +1,436 @@
+{
+ "policy": "runs/ppo_elite2b/policy.pt",
+ "ratings": "ship_ratings_v2b.tsv",
+ "scale": 1.0,
+ "agents": 48,
+ "minutes": 30.0,
+ "ship_style": true,
+ "scorecard": [
+  [
+   "crowd",
+   "board rank",
+   "67%",
+   ">= 80%",
+   "FAIL"
+  ]
+ ],
+ "result": {
+  "score": [
+   38.71388888888889,
+   2.4959947765734447
+  ],
+  "kills": [
+   0.5048611111111111,
+   0.04066479354175041
+  ],
+  "deaths": [
+   0.13541666666666666,
+   0.018698556303555436
+  ],
+  "fired": [
+   14.223611111111111,
+   0.5020830436259981
+  ],
+  "damage": [
+   0.9912449307319346,
+   0.057196024710933185
+  ],
+  "damage_per_shot": 0.06969010351791748,
+  "score_lost": [
+   14.26875,
+   3.146081400736238
+  ],
+  "board_score": [
+   333.35343071520816,
+   20.327442539108652
+  ],
+  "board_rank": [
+   0.670699103443207,
+   0.015070784761847072
+  ],
+  "kd": 3.7282051282051283,
+  "max_level_mean": 6.729166666666667,
+  "agent_steps_per_sec": 804.8082570070582,
+  "by_type": {
+   "Momi": {
+    "level": 2,
+    "family": "surface",
+    "share": 0.12243518518518519,
+    "score_per_min": 31.64372683959767,
+    "kd": 1.7692307692307692,
+    "fires_per_min": 15.739620358466308,
+    "weapon_mix": {
+     "torpedo": 0.43,
+     "gun": 0.31,
+     "depth/mine": 0.26,
+     "SAM": 0.0
+    }
+   },
+   "Golf": {
+    "level": 4,
+    "family": "submarine",
+    "share": 0.08832407407407407,
+    "score_per_min": 15.78781842960478,
+    "kd": 4.2727272727272725,
+    "fires_per_min": 3.0663591571443547,
+    "weapon_mix": {
+     "torpedo": 0.95,
+     "SAM": 0.05
+    }
+   },
+   "Espana": {
+    "level": 3,
+    "family": "surface",
+    "share": 0.08047685185185185,
+    "score_per_min": 33.55002013461428,
+    "kd": 1.631578947368421,
+    "fires_per_min": 5.772881550940574,
+    "weapon_mix": {
+     "gun": 0.97,
+     "SAM": 0.03
+    }
+   },
+   "Freccia": {
+    "level": 3,
+    "family": "surface",
+    "share": 0.07710416666666667,
+    "score_per_min": 33.35134648293254,
+    "kd": 1.16,
+    "fires_per_min": 17.031432946050618,
+    "weapon_mix": {
+     "torpedo": 0.45,
+     "gun": 0.37,
+     "depth/mine": 0.16,
+     "SAM": 0.01,
+     "decoy": 0.0
+    }
+   },
+   "Komar": {
+    "level": 1,
+    "family": "surface",
+    "share": 0.05741898148148148,
+    "score_per_min": 12.37250554323725,
+    "kd": 1.0,
+    "fires_per_min": 14.319693610159241,
+    "weapon_mix": {
+     "torpedo": 0.46,
+     "gun": 0.23,
+     "depth/mine": 0.32,
+     "SAM": 0.0
+    }
+   },
+   "FairmileD": {
+    "level": 1,
+    "family": "surface",
+    "share": 0.04784259259259259,
+    "score_per_min": 14.311979872266306,
+    "kd": 0.8333333333333334,
+    "fires_per_min": 12.134700987033096,
+    "weapon_mix": {
+     "torpedo": 0.39,
+     "gun": 0.28,
+     "depth/mine": 0.34,
+     "SAM": 0.0,
+     "decoy": 0.0
+    }
+   },
+   "Pt34": {
+    "level": 1,
+    "family": "surface",
+    "share": 0.04608796296296296,
+    "score_per_min": 11.63234555499749,
+    "kd": 0.5454545454545454,
+    "fires_per_min": 5.153189352084381,
+    "weapon_mix": {
+     "torpedo": 1.0,
+     "SAM": 0.0
+    }
+   },
+   "Dreadnought": {
+    "level": 4,
+    "family": "surface",
+    "share": 0.04276851851851852,
+    "score_per_min": 46.38991123619831,
+    "kd": 4.0,
+    "fires_per_min": 14.41870534747781,
+    "weapon_mix": {
+     "torpedo": 0.25,
+     "gun": 0.73,
+     "SAM": 0.02
+    }
+   },
+   "Yasen": {
+    "level": 8,
+    "family": "submarine",
+    "share": 0.042534722222222224,
+    "score_per_min": 19.68979591836735,
+    "kd": 12.25,
+    "fires_per_min": 9.681632653061225,
+    "weapon_mix": {
+     "torpedo": 0.13,
+     "gun": 0.01,
+     "missile": 0.18,
+     "depth/mine": 0.0,
+     "SAM": 0.62,
+     "decoy": 0.06
+    }
+   },
+   "Leander": {
+    "level": 5,
+    "family": "surface",
+    "share": 0.035201388888888886,
+    "score_per_min": 64.943775892681,
+    "kd": 6.75,
+    "fires_per_min": 20.69441704478201,
+    "weapon_mix": {
+     "torpedo": 0.49,
+     "gun": 0.49,
+     "SAM": 0.02
+    }
+   },
+   "Town": {
+    "level": 6,
+    "family": "surface",
+    "share": 0.03468287037037037,
+    "score_per_min": 69.8791964226123,
+    "kd": 39.0,
+    "fires_per_min": 30.854968964826803,
+    "weapon_mix": {
+     "torpedo": 0.41,
+     "gun": 0.52,
+     "missile": 0.0,
+     "aircraft": 0.03,
+     "depth/mine": 0.0,
+     "SAM": 0.03,
+     "decoy": 0.0
+    }
+   },
+   "ArleighBurke": {
+    "level": 5,
+    "family": "surface",
+    "share": 0.034555555555555555,
+    "score_per_min": 58.11897106109325,
+    "kd": 13.333333333333334,
+    "fires_per_min": 26.627813504823152,
+    "weapon_mix": {
+     "torpedo": 0.08,
+     "gun": 0.04,
+     "missile": 0.03,
+     "SAM": 0.86,
+     "decoy": 0.0
+    }
+   },
+   "G5": {
+    "level": 1,
+    "family": "surface",
+    "share": 0.03450231481481481,
+    "score_per_min": 14.310634015431065,
+    "kd": 1.1538461538461537,
+    "fires_per_min": 5.233143240523314,
+    "weapon_mix": {
+     "torpedo": 1.0,
+     "SAM": 0.0
+    }
+   },
+   "Buyan": {
+    "level": 4,
+    "family": "surface",
+    "share": 0.03131712962962963,
+    "score_per_min": 34.01581787271787,
+    "kd": 3.4,
+    "fires_per_min": 20.378446300539583,
+    "weapon_mix": {
+     "gun": 0.19,
+     "missile": 0.13,
+     "SAM": 0.68
+    }
+   },
+   "Type212A": {
+    "level": 7,
+    "family": "submarine",
+    "share": 0.03127546296296296,
+    "score_per_min": 11.346310413736955,
+    "kd": 5.75,
+    "fires_per_min": 8.10450743838354,
+    "weapon_mix": {
+     "torpedo": 0.38,
+     "gun": 0.0,
+     "aircraft": 0.0,
+     "depth/mine": 0.0,
+     "SAM": 0.47,
+     "decoy": 0.14
+    }
+   },
+   "Moskva": {
+    "level": 7,
+    "family": "carrier",
+    "share": 0.029925925925925925,
+    "score_per_min": 61.12314356435643,
+    "kd": 13.0,
+    "fires_per_min": 15.013923267326733,
+    "weapon_mix": {
+     "torpedo": 0.26,
+     "missile": 0.01,
+     "aircraft": 0.02,
+     "SAM": 0.68,
+     "decoy": 0.03
+    }
+   },
+   "Kirov": {
+    "level": 8,
+    "family": "surface",
+    "share": 0.028886574074074075,
+    "score_per_min": 94.69508774741567,
+    "kd": 68.0,
+    "fires_per_min": 23.247055052488182,
+    "weapon_mix": {
+     "torpedo": 0.1,
+     "gun": 0.22,
+     "missile": 0.13,
+     "aircraft": 0.01,
+     "depth/mine": 0.0,
+     "SAM": 0.55
+    }
+   },
+   "Type055": {
+    "level": 7,
+    "family": "surface",
+    "share": 0.027770833333333335,
+    "score_per_min": 83.19579894973744,
+    "kd": 30.0,
+    "fires_per_min": 19.329832458114527,
+    "weapon_mix": {
+     "torpedo": 0.16,
+     "gun": 0.1,
+     "missile": 0.25,
+     "SAM": 0.5
+    }
+   },
+   "Kolkata": {
+    "level": 6,
+    "family": "surface",
+    "share": 0.023641203703703702,
+    "score_per_min": 79.66317438558698,
+    "kd": 24.5,
+    "fires_per_min": 21.032018016253794,
+    "weapon_mix": {
+     "torpedo": 0.1,
+     "gun": 0.07,
+     "missile": 0.13,
+     "SAM": 0.69
+    }
+   },
+   "Fletcher": {
+    "level": 4,
+    "family": "surface",
+    "share": 0.02343287037037037,
+    "score_per_min": 44.631038229773786,
+    "kd": 0.75,
+    "fires_per_min": 14.284303072211795,
+    "weapon_mix": {
+     "torpedo": 0.41,
+     "gun": 0.33,
+     "depth/mine": 0.25,
+     "SAM": 0.01
+    }
+   },
+   "Bismarck": {
+    "level": 7,
+    "family": "surface",
+    "share": 0.016307870370370372,
+    "score_per_min": 99.94322214336408,
+    "kd": 10.0,
+    "fires_per_min": 16.437189496096522,
+    "weapon_mix": {
+     "torpedo": 0.0,
+     "gun": 0.75,
+     "missile": 0.0,
+     "aircraft": 0.12,
+     "depth/mine": 0.01,
+     "SAM": 0.11,
+     "decoy": 0.01
+    }
+   },
+   "Clemenceau": {
+    "level": 9,
+    "family": "carrier",
+    "share": 0.014280092592592592,
+    "score_per_min": 66.13713729940022,
+    "kd": 20.0,
+    "fires_per_min": 33.846652617928356,
+    "weapon_mix": {
+     "torpedo": 0.0,
+     "gun": 0.42,
+     "aircraft": 0.01,
+     "SAM": 0.54,
+     "decoy": 0.02
+    }
+   },
+   "Essex": {
+    "level": 6,
+    "family": "carrier",
+    "share": 0.014263888888888888,
+    "score_per_min": 112.22005842259007,
+    "kd": 7.5,
+    "fires_per_min": 28.72444011684518,
+    "weapon_mix": {
+     "torpedo": 0.04,
+     "gun": 0.87,
+     "missile": 0.02,
+     "aircraft": 0.01,
+     "depth/mine": 0.02,
+     "SAM": 0.04
+    }
+   },
+   "Yamato": {
+    "level": 9,
+    "family": "surface",
+    "share": 0.010898148148148148,
+    "score_per_min": 71.87765505522515,
+    "kd": 5.0,
+    "fires_per_min": 10.705182667799491,
+    "weapon_mix": {
+     "torpedo": 0.01,
+     "gun": 0.64,
+     "aircraft": 0.17,
+     "SAM": 0.1,
+     "decoy": 0.08
+    }
+   },
+   "Seawolf": {
+    "level": 9,
+    "family": "submarine",
+    "share": 0.0040648148148148145,
+    "score_per_min": 6.492027334851936,
+    "kd": 4.0,
+    "fires_per_min": 5.125284738041002,
+    "weapon_mix": {
+     "torpedo": 0.7,
+     "aircraft": 0.03,
+     "SAM": 0.1,
+     "decoy": 0.17
+    }
+   }
+  },
+  "family_share": {
+   "surface": 0.7753310185185185,
+   "submarine": 0.16619907407407408,
+   "carrier": 0.05846990740740741
+  },
+  "death_causes": {
+   "terrain": 1,
+   "weapon": 185,
+   "ram/collision": 9
+  },
+  "score_by_10min": [
+   25.1875,
+   41.33958333333333,
+   49.614583333333336
+  ],
+  "board_rank_by_10min": [
+   0.49271378536497346,
+   0.7149503069095772,
+   0.8044332180550706
+  ]
+ }
+}
