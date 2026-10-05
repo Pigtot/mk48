@@ -11,6 +11,7 @@ per vehicle. V7 adds a "salvo" head: fire every other ready weapon that can hit 
 
 from __future__ import annotations
 
+import json
 import math
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -317,7 +318,42 @@ def upgrade(policy: Policy, layout: Layout, salvo_bias: float = 1.0) -> Policy:
     return new
 
 
+class PhasedPolicy(nn.Module):
+    """An opening policy while the ship is small, then the main policy (like an opening book).
+
+    Loaded by `load` from a JSON recipe: {"opening": ..., "main": ..., "until_level": L}, with
+    paths relative to the recipe. Rows whose own ship is at most level L use the opening policy."""
+
+    MAX_LEVEL = 10  # observation feature 8 is level / EntityData::MAX_BOAT_LEVEL
+
+    def __init__(self, opening: Policy, main: Policy, until_level: int):
+        super().__init__()
+        self.opening, self.main, self.until_level = opening, main, until_level
+        self.layout = main.layout
+
+    def forward(self, obs: torch.Tensor) -> dict[str, torch.Tensor]:
+        early = (obs[:, 8] * self.MAX_LEVEL).round() <= self.until_level
+        if early.all():
+            return self.opening(obs)
+        if not early.any():
+            return self.main(obs)
+        # Each network only computes its own rows.
+        a, b = self.opening(obs[early]), self.main(obs[~early])
+        out = {}
+        for k in b:
+            merged = b[k].new_empty((len(obs),) + b[k].shape[1:])
+            merged[early], merged[~early] = a[k], b[k]
+            out[k] = merged
+        return out
+
+
 def load(path: Path | str, device: str = "cpu") -> tuple[Policy, Value | None, dict]:
+    if str(path).endswith(".json"):  # a PhasedPolicy recipe
+        recipe = json.loads(Path(path).read_text())
+        here = Path(path).parent
+        opening = load(here / recipe["opening"], device)[0]
+        main = load(here / recipe["main"], device)[0]
+        return PhasedPolicy(opening, main, int(recipe["until_level"])).to(device), None, recipe
     state = torch.load(path, map_location=device, weights_only=False)
     layout = Layout(**state["layout"]) if "layout" in state else V5  # V5 checkpoints predate the field
     policy = Policy(layout).to(device)

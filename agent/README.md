@@ -327,6 +327,11 @@ it can't be heard, and fires SAMs at 94% of incoming missiles and decoys at 97% 
 torpedoes. It plays more carefully and scores a little less, so it makes a good style for the
 other AI bots.
 
+**An opening book.** Like a chess player's prepared openings, a second AI can drive the ship while
+it's small and hand over to the elite at level 6. In the first 10 minutes it sits higher on the
+scoreboard (about 63% instead of 55%, where 100% is first place), but over a whole hour it does
+the same as the elite alone, so it's an option rather than the default: `./run_game.sh models/bc_v6.pt 12 40 models/elite_opening.json`.
+
 ---
 
 ## Things that didn't work (and what we learned)

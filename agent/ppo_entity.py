@@ -33,10 +33,10 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 import entity_policy as ep
-from mk48env import AGGRESSIVE, BOARD, DIED, KILLS, SCORE_DELTA, SERVER_BUILDS, Mk48VecEnv, RewardConfig, ServerConfig
+from mk48env import AGGRESSIVE, BOARD, DIED, OPENING, KILLS, SCORE_DELTA, SERVER_BUILDS, Mk48VecEnv, RewardConfig, ServerConfig
 
 SERVERS = SERVER_BUILDS
-REWARDS = {"default": RewardConfig(), "aggressive": AGGRESSIVE, "board": BOARD}
+REWARDS = {"default": RewardConfig(), "aggressive": AGGRESSIVE, "board": BOARD, "opening": OPENING}
 
 
 class RunningMeanStd:

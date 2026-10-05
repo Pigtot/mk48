@@ -78,6 +78,8 @@ AGGRESSIVE = RewardConfig(score=0.05, kill=3.0, death=-4.0, damage_taken=-1.5, d
 # Elite tuned for the scoreboard: as AGGRESSIVE, but a death also costs the score it wipes, at the
 # same rate as score gained. Bold when poor, careful when rich ("protect the lead").
 BOARD = RewardConfig(score=0.05, kill=3.0, death=-4.0, damage_taken=-1.5, damage_dealt=2.0, death_loss=0.05)
+# Opening specialist: as BOARD, with points gained worth twice as much (climbing fast is the opening's job).
+OPENING = RewardConfig(score=0.1, kill=3.0, death=-4.0, damage_taken=-1.5, damage_dealt=2.0, death_loss=0.05)
 
 
 @dataclass

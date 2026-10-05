@@ -1,3 +1,5 @@
+from dataclasses import asdict
+
 import numpy as np
 import torch
 
@@ -135,3 +137,21 @@ def test_doctrine_labels():
     air, target, stealth = ep.doctrine_labels(obs)
     assert air.tolist() == [True, False, False] and target[0].item() == 5
     assert stealth.tolist() == [False, True, False]
+
+
+def test_phased_policy_switches_by_level(tmp_path):
+    """The opening policy drives small ships, the main policy the rest; recipes load from JSON."""
+    torch.manual_seed(0)
+    opening, main = ep.Policy(ep.V7), ep.Policy(ep.V7)
+    torch.save({"layout": asdict(ep.V7), "policy": opening.state_dict()}, tmp_path / "opening.pt")
+    torch.save({"layout": asdict(ep.V7), "policy": main.state_dict()}, tmp_path / "main.pt")
+    (tmp_path / "phased.json").write_text('{"opening": "opening.pt", "main": "main.pt", "until_level": 4}')
+    phased = ep.load(tmp_path / "phased.json")[0]
+    obs = torch.zeros(2, ep.V7.obs_dim)
+    obs[:, 0] = 1
+    obs[0, 8], obs[1, 8] = 0.4, 0.5  # levels 4 and 5
+    with torch.no_grad():
+        got, a, b = phased(obs), opening(obs), main(obs)
+    for head in got:  # each network computes only its rows: equal up to float rounding
+        assert torch.allclose(got[head][0], a[head][0], atol=1e-5)
+        assert torch.allclose(got[head][1], b[head][1], atol=1e-5)

@@ -12,6 +12,7 @@ Scenarios (fresh worlds, NN ships play as in the game: player rules, lead aim, s
   rich      starts with 1,500 points (a level-9 ship) among fresh bots: protecting a lead
   skills    every ship family (personas without ratings): submarines dive, defensive weapons
             (SAMs, decoys, depth charges) answer the threats they exist for
+  opening   the top10 setup for its first 20 minutes, in 16 worlds: the climb from zero
 
 Each scenario's result goes to runs/pressure/<label>/<scenario>.json as soon as it finishes, so
 scenarios can run as parallel processes (--only); --report prints the scorecards of saved labels.
@@ -39,6 +40,7 @@ def scenarios(ratings: Path | None) -> dict[str, dict]:
         "hostile": dict(game, agents=2, bots=40, procs=8, minutes=30, bot_aggression=2.0),
         "rich": dict(game, agents=2, bots=32, procs=8, minutes=30, start_score=1500),
         "skills": dict(agent_kind="nn-bot", ship_style=True, agents=4, bots=32, procs=8, minutes=30, skills=True),
+        "opening": dict(game, agents=1, opponents=11, opponent_policy=IMITATION, bots=40, procs=16, minutes=20),
     }
 
 
@@ -48,6 +50,11 @@ def checks(name: str, r: dict) -> list[tuple[str, float | None, str, bool | None
     rank, deaths = r.get("board_rank", (None,))[0], r["deaths"][0]
     if name == "top10":
         return [("board rank", rank, ">= 90%", rank is not None and rank >= 0.90)]
+    if name == "opening":
+        blocks = r.get("board_rank_by_10min", []) + [None, None]
+        first, second = blocks[:2]
+        return [("board rank, first 10 minutes", first, ">= 75%", None if first is None else first >= 0.75),
+                ("board rank, minutes 10-20", second, ">= 90%", None if second is None else second >= 0.90)]
     if name == "crowd":
         return [("board rank", rank, ">= 80%", rank is not None and rank >= 0.80)]
     if name == "hostile":

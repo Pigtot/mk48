@@ -217,6 +217,31 @@ submarines dived 99% of the time and stopped attacking (TypeViic 13 → 4 score/
 ship ratings then steer around. Moves PPO would almost never sample (SAMs, decoys) need a
 demonstration; an auxiliary imitation loss on the situation took SAM use from 5% to 87% (v2b).
 
+### Opening book (experiment)
+
+In a fresh world everyone starts at 0, and the elite spent its first three minutes below the middle
+of the scoreboard (39 → 42 → 43%) in level-1 boats. An opening book is a second network that drives
+the ship while it's small and hands over to the elite at a set level: `PhasedPolicy`, loaded from a
+JSON recipe that `evaluate.py`, `pressure_test.py` and `serve_policy.py` accept like a policy file
+(`{"opening": ..., "main": ..., "until_level": 5}`, paths relative to the recipe). Each network
+only computes the rows it drives. Openings were trained from the elite in 6-minute worlds: A
+(`--reward board`), B (`--reward opening`: score gained counts double) and C (as B with a looser KL
+anchor, 0.02 → 0.01, and 2.5M steps instead of 1.5M).
+
+The `opening` pressure scenario (the top-10% setup for its first 20 minutes, 16 worlds):
+
+| | First 10 min | Minutes 10–20 |
+|---|---|---|
+| elite alone | 56% | 79% |
+| A, until level 3 / 4 / 5 | 48 / 59 / 51% | 74 / 78 / 73% |
+| B, until level 3 / 4 / 5 | 50 / 48 / 57% | 75 / 71 / 89% |
+| C, until level 4 / 5 | 57 / **65%** | 85 / 85% |
+
+C until level 5 confirmed its opening in the 60-minute top-10% scenario (first 10 minutes 64% and
+61% against the elite's 56% and 53%), but not the hour: 85% and 84%, against the elite's 85% and 85%
+(later blocks came out a little lower). It ships as an option (`models/elite_opening.json`), not as the default.
+Runs of the same setup vary by about ±5 points, so only differences confirmed twice count.
+
 ---
 
 ## How the network works
@@ -395,7 +420,7 @@ kills at the same death rate). Late in the run the policy drifted far from the i
 | `../server/src/server.rs` | Scoreboard shows everyone (`LEADERBOARD_SIZE`, `LIVEBOARD_BOTS`); NN hooks |
 | `../vendor/kodiak` | Local copy of the game engine; the client's 10-row scoreboard limit raised |
 | `mk48env.py` | Vectorized environment, rewards, world restarts |
-| `entity_policy.py` | Entity-transformer policy, action/label conversion, save/load |
+| `entity_policy.py` | Entity-transformer policy, action/label conversion, save/load, lessons (`defense_labels`, `doctrine_labels`), opening-book recipes (`PhasedPolicy`) |
 | `train_bc_entity.py` | Imitation (DAgger) |
 | `ppo_entity.py` | PPO with KL anchor, fp16, frozen opponents, reward presets |
 | `evaluate.py` | Fresh-world evaluation, per-vehicle stats, death causes, damage per shot, scoreboard score and rank, score lost to deaths, time per ship family; `--agent-kind`, `--ship-style`, `--ship-ratings`, `--no-lead`, `--opponents`, `--start-score`, `--bot-aggression`, `--skills` |
@@ -407,7 +432,7 @@ kills at the same death rate). Late in the run the policy drifted far from the i
 | `plot_training.py` | 3D viridis chart (`runs/training.png`) and 2D chart |
 | `plot_nn_3d.py` | 3D views of the networks: training losses, loss landscape, the elite's neurons at one game moment |
 | `run_game.sh` | Starts the playable server with NN bots |
-| `models/` | Trained networks: `bc_v6.pt` (imitation), `ppo_v5.pt`, `elite_6M.pt`, `elite_15M.pt`, `elite_v2b_3M.pt` (the current elite), `elite_v4.pt` (best skills; a second style) |
+| `models/` | Trained networks: `bc_v6.pt` (imitation), `ppo_v5.pt`, `elite_6M.pt`, `elite_15M.pt`, `elite_v2b_3M.pt` (the current elite), `elite_v4.pt` (best skills; a second style), `opening_c.pt` with `elite_opening.json` (opening book: opening_c until level 5, then the elite) |
 | `ship_ratings.tsv` | The current elite's ship ratings, read by the game server through `run_game.sh` |
 | `results/` | Evaluation results (`evals.json`), pressure-test results (`pressure/`) and charts |
 | `train_ppo.py`, `train_bc.py` | Earlier Stable-Baselines3 MLP versions (v1–v4), kept for reference |

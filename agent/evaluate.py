@@ -77,8 +77,9 @@ def evaluate(policy: str, minutes: float, agents: int, bots: int, procs: int, de
     but aren't measured (e.g. the elite among imitation NN bots, as in the game)."""
     scripted = policy == "bot"
     expert = policy == "expert"  # the bot's choices replayed through the agent's action space
-    if opponents and (not policy.endswith(".pt") or not opponent_policy):
-        raise ValueError("opponents need an entity policy (.pt) and --opponent-policy")
+    is_network = policy.endswith((".pt", ".json"))  # a network, or a phased recipe of networks
+    if opponents and (not is_network or not opponent_policy):
+        raise ValueError("opponents need an entity policy (.pt or .json) and --opponent-policy")
     per_world = agents + opponents
     env = Mk48VecEnv(
         n_procs=procs,
@@ -92,7 +93,7 @@ def evaluate(policy: str, minutes: float, agents: int, bots: int, procs: int, de
     others = np.array([i for i in range(env.num_envs) if i % per_world >= agents], dtype=int)
     model = None
     entity = None
-    if policy.endswith(".pt"):
+    if is_network:
         import torch
 
         import entity_policy as ep
@@ -219,12 +220,16 @@ def evaluate(policy: str, minutes: float, agents: int, bots: int, procs: int, de
     if env.has_board_rank:
         result["board_rank_by_10min"] = [float(board["board_rank"][10 * b : 10 * (b + 1)].mean())
                                          for b in range(blocks)]
+        # The opening, minute by minute.
+        result["board_rank_by_min"] = [float(x) for x in board["board_rank"][:15].mean(1)]
+        result["score_by_min"] = [float(x) for x in per_min["score"][:15].mean(1)]
     return result
 
 
 def main() -> None:
     p = argparse.ArgumentParser()
-    p.add_argument("policy", help="random | bot | expert | path/to/model.zip (SB3) | path/to/policy.pt (entity)")
+    p.add_argument("policy", help="random | bot | expert | path/to/model.zip (SB3) | path/to/policy.pt (entity) | "
+                                  "path/to/recipe.json (phased: opening, then main policy)")
     p.add_argument("--minutes", type=float, default=10, help="game minutes per agent")
     p.add_argument("--agents", type=int, default=16)
     p.add_argument("--bots", type=int, default=32)
