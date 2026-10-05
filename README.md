@@ -1,3 +1,31 @@
+# mk48
+
+mk48 neural network on mac
+
+This repository is [mk48](https://github.com/SoftbearStudios/mk48), the open-source naval combat
+game by Softbear (AGPL-3.0), plus neural-network bots trained on a server you run yourself.
+
+**[agent/README.md](agent/README.md)** explains what the networks see and do, how they were trained,
+the results, and how to play against them or watch the game through their eyes.
+
+![Training and evaluation](agent/results/training.png)
+
+Changes to the game itself:
+
+- `server/src/train.rs`: headless training mode (`server train`), the observation and action
+  encoding, expert labels for imitation, and a collision guard for NN ships.
+- `server/src/nn_bots.rs`: NN-driven bots ("NN 1", ..., "NN Elite") and an autopilot for players
+  named "AI..." in the normal game.
+- `server/src/world_mutation.rs`, `player.rs`, `bot.rs`, `server.rs`: damage-dealt statistic, the
+  bot's firing solution for labels, NN hooks, and a scoreboard that lists everyone.
+- `vendor/kodiak`: the game engine (kodiak 0.2.0), vendored so its scoreboard can show everyone.
+
+Nothing here connects to mk48.io or any public server.
+
+---
+
+*The original mk48 README follows.*
+
 # Mk48.io Game
 
 [![Build](https://github.com/SoftbearStudios/mk48/actions/workflows/build.yml/badge.svg)](https://github.com/SoftbearStudios/mk48/actions/workflows/build.yml)
