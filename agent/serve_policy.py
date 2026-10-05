@@ -31,6 +31,9 @@ def read_exact(stream, size: int) -> bytes:
 
 
 def main() -> None:
+    # The game waits for every decision. A batch of ~16 ships is answered faster and more steadily
+    # on one thread (median 3.9 ms vs 7 ms on 8, worst case 5 vs 12 ms with other programs busy).
+    torch.set_num_threads(1)
     paths = sys.argv[1:3]
     policies = [ep.load(p, "cpu")[0].eval() for p in paths]
     inp, out = sys.stdin.buffer, sys.stdout.buffer
