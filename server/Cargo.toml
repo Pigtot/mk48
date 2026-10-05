@@ -1,0 +1,53 @@
+[package]
+authors = ["Softbear, Inc."]
+edition = "2021"
+license = "AGPL-3.0-or-later"
+name = "server"
+version = "0.1.4"
+
+[profile.release]
+debug = true
+#lto = true
+#codegen-units=1
+
+#[profile.release.package.kodiak_server]
+#debug = true
+
+[profile.release.package."*"]
+debug = false
+
+# An attempt to speed up various operations at the beginning of runtime.
+[profile.dev.package.regex]
+opt-level = 3
+[profile.dev.package.png]
+opt-level = 3
+[profile.dev.package.libwebp-sys]
+opt-level = 3
+[profile.dev.package.flate2]
+opt-level = 3
+[profile.dev.package.adler]
+opt-level = 3
+[profile.dev.package.sha2]
+opt-level = 3
+[profile.dev.package.miniz_oxide]
+opt-level = 3
+
+[dependencies]
+atomic_refcell = "0.1"
+bitvec = "1.0.0"
+common = {path="../common", version="0.1", features=["server"]}
+env_logger = "0.9"
+idalloc = "0.1"
+kodiak_server = { features = [ "log_release_max_level_info" ], git = "https://github.com/softbearstudios/kodiak", tag="0.2.0" }
+lazy_static = "1"
+maybe_parallel_iterator = {version = "0.10.0", features = []}
+noise = { version = "0.7", default-features = false }
+ringbuffer = "0.8"
+serde = "1.0"
+serde_bytes = "0.11"
+serde_json = "1.0"
+tokio = "1"
+
+[dev-dependencies]
+image = { version = "0.24", features = [ "png" ], default-features=false }
+imageproc = "0.23.0"
