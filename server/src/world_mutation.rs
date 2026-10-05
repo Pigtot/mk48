@@ -123,6 +123,14 @@ impl Mutation {
             }
             Self::HitBy(other_player, weapon_type, damage) => {
                 let e = &mut entities[index];
+                // Statistic: share of a boat's health dealt (used for training rewards).
+                if e.is_boat() && !e.player.as_ref().map_or(false, |p| Arc::ptr_eq(p, &other_player)) {
+                    let max_health = e.data().max_health().to_secs();
+                    if max_health > 0.0 {
+                        other_player.borrow_player_mut().damage_dealt +=
+                            (damage.to_secs() / max_health).min(1.0);
+                    }
+                }
                 if e.damage(damage) {
                     let (killer_alias, killer_score) = {
                         let (e_score, dead) = {

@@ -34,6 +34,9 @@ pub struct Bot {
     spawned_at_least_once: bool,
     /// The value of submerge previously sent.
     was_submerging: bool,
+    /// The last firing solution found (armament index, target), whether or not the bot chose to
+    /// fire this tick. Used to derive deterministic training labels.
+    pub last_solution: Option<(u8, Vec2)>,
 }
 
 impl Default for Bot {
@@ -53,6 +56,7 @@ impl Default for Bot {
             level_ambition: random_level(&mut rng).min(random_level(&mut rng)),
             spawned_at_least_once: false,
             was_submerging: false,
+            last_solution: None,
         }
     }
 }
@@ -71,18 +75,20 @@ impl Bot {
         terrain.sample(pos).unwrap_or(Altitude::MIN) >= terrain::SAND_LEVEL
     }
 
-    /// update processes a complete update and returns some command (or None to quit).
-    fn update<'a, U: 'a + CompleteTrait<'a>>(
+    /// act processes a complete update and returns some command (or None to quit).
+    /// `aggression_scale` multiplies this bot's randomized aggression.
+    pub fn act<'a, U: 'a + CompleteTrait<'a>>(
         &mut self,
         mut update: U,
         player_id: PlayerId,
-        settings: &ArenaSettingsDto<<Server as ArenaService>::ArenaSettings>,
+        aggression_scale: f32,
     ) -> BotAction<Command> {
-        let aggression = self.aggression * settings.bot_aggression();
+        let aggression = self.aggression * aggression_scale;
         let mut rng = thread_rng();
 
         let mut contacts = update.contacts();
         let terrain = update.terrain();
+        self.last_solution = None;
 
         if let Some(boat) = contacts
             .next()
@@ -302,6 +308,8 @@ impl Bot {
                 }
             }
 
+            self.last_solution = best_firing_solution.map(|(i, target, _)| (i, target + self.aim_bias));
+
             self.was_submerging = if data.sub_kind == EntitySubKind::Submarine {
                 // More positive values mean want to surface, more negative values mean want to dive.
                 let surface_bias = health_percent - aggression * (1.0 / Self::MAX_AGGRESSION);
@@ -367,12 +375,18 @@ impl kodiak_server::Bot<Server> for Bot {
         player: &mut Player<Server>,
         settings: &ArenaSettingsDto<<Server as ArenaService>::ArenaSettings>,
     ) -> BotAction<<Server as ArenaService>::GameRequest> {
+        if let Some(nn_bots) = server.nn_bots.as_ref() {
+            if nn_bots.controls(player_id) {
+                // Driven directly by `NnBots::tick`.
+                return BotAction::None("driven by NN");
+            }
+        }
         let player_tuple = server.player.get(player_id).unwrap();
         let update = server.world.get_player_complete(player_tuple);
         player
             .inner
             .bot_mut()
             .unwrap()
-            .update(update, player_id, settings)
+            .act(update, player_id, settings.bot_aggression())
     }
 }

@@ -115,6 +115,8 @@ pub struct TempPlayer {
     pub hint: Hint,
     /// Current status e.g. Alive, Dead, or Spawning.
     pub status: Status,
+    /// Total weapon damage dealt to other players' boats, in boats' worth (statistic only).
+    pub damage_dealt: f32,
 }
 
 impl TempPlayer {
@@ -129,6 +131,7 @@ impl TempPlayer {
             flags: Flags::default(),
             hint: Hint::default(),
             status: Status::Spawning,
+            damage_dealt: 0.0,
         }
     }
 

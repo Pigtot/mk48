@@ -20,6 +20,7 @@ mod contact_ref;
 mod entities;
 mod entity;
 mod entity_extension;
+mod nn_bots;
 mod noise;
 mod ordered_set;
 mod player;
@@ -27,6 +28,7 @@ mod protocol;
 mod server;
 mod team;
 mod terrain_pool;
+mod train;
 mod world;
 mod world_inbound;
 mod world_mutation;
@@ -43,6 +45,13 @@ use std::process::ExitCode;
 
 fn main() -> ExitCode {
     noise::init();
+
+    let args: Vec<String> = std::env::args().collect();
+    match args.get(1).map(String::as_str) {
+        Some("train") => return train::run(&args[2..]),
+        Some("types") => return train::print_types(),
+        _ => {}
+    }
 
     entry_point::<Server>(minicdn::release_include_mini_cdn!("../../client/dist/"))
 }

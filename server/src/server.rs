@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use crate::bot::*;
+use crate::nn_bots::NnBots;
 use crate::entity_extension::EntityExtension;
 use crate::player::*;
 use crate::protocol::*;
@@ -38,6 +39,8 @@ pub struct Server {
     /// update -> get_client_update.
     team_update: Option<(Arc<[TeamDto]>, Arc<[TeamId]>)>,
     free_points: u32,
+    /// Optional neural-network control of some engine bots (`MK48_NN_BOTS`, see `nn_bots.rs`).
+    pub nn_bots: Option<NnBots>,
 }
 
 /// Stores a player, and metadata related to it. Data stored here may only be accessed when processing,
@@ -57,6 +60,9 @@ unsafe impl Sync for PlayerExtension {}
 
 impl ArenaService for Server {
     const GAME_CONSTANTS: &'static GameConstants = MK48_CONSTANTS;
+    /// Local server: everyone (including bots and NN bots) is on the live scoreboard.
+    const LEADERBOARD_SIZE: usize = 100;
+    const LIVEBOARD_BOTS: bool = true;
     const TICK_PERIOD_SECS: f32 = Ticks::PERIOD_SECS;
 
     /// How long a player can remain in limbo after they lose connection.
@@ -69,12 +75,14 @@ impl ArenaService for Server {
 
     /// new returns a game server with the specified parameters.
     fn new(context: &mut ArenaContext<Self>) -> Self {
+        let player = PlayerTupleRepo::default();
+        let nn_bots = NnBots::from_env();
         Self {
             world: World::new(World::target_radius(
                 context.min_players() as f32 * EntityType::FairmileD.data().visual_area(),
             )),
             counter: Ticks::ZERO,
-            player: PlayerTupleRepo::default(),
+            player,
             team: TeamRepo::default(),
             team_update: None,
             free_points: if context.topology.local_arena_id.realm_id.is_temporary()
@@ -86,6 +94,7 @@ impl ArenaService for Server {
             } else {
                 0
             },
+            nn_bots,
         }
     }
 
@@ -115,6 +124,27 @@ impl ArenaService for Server {
         engine_player: &mut Player<Self>,
     ) -> Option<Update> {
         let player_tuple = self.player.get(player_id).unwrap();
+        // Autopilot: the policy drives this ship, so ignore the player's own steering, firing and
+        // upgrades (but keep their screen-shape hint so the right terrain is sent).
+        if self.nn_bots.as_ref().map_or(false, |nn| nn.is_autopilot(player_id)) {
+            match &update {
+                Command::Control(control) => {
+                    if let Some(hint) = &control.hint {
+                        let _ = hint.apply(
+                            &mut self.world,
+                            &player_tuple,
+                            &self.player,
+                            &mut self.team,
+                            None,
+                            None,
+                        );
+                    }
+                    return None;
+                }
+                Command::Upgrade(_) => return None,
+                _ => {}
+            }
+        }
         if let Err(e) = update.as_command().apply(
             &mut self.world,
             &player_tuple,
@@ -247,6 +277,12 @@ impl ArenaService for Server {
         self.world.update(Ticks::ONE, &mut |killer, dead| {
             context.tally_victory(killer, dead)
         });
+
+        if let Some(nn_bots) = self.nn_bots.as_mut() {
+            if !nn_bots.tick(&mut self.world, &self.player, &mut self.team) {
+                self.nn_bots = None;
+            }
+        }
 
         // Needs to be called before clients receive updates, but after World::update.
         self.world.terrain.pre_update();
