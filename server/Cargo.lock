@@ -671,7 +671,7 @@ checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
 
 [[package]]
 name = "common"
-version = "0.1.0"
+version = "0.1.4"
 dependencies = [
  "actix",
  "bincode",
@@ -1698,7 +1698,7 @@ dependencies = [
 
 [[package]]
 name = "kodiak_common"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "actix",
  "arrayvec 0.7.2",
@@ -1723,7 +1723,7 @@ dependencies = [
 
 [[package]]
 name = "kodiak_macros"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "convert_case 0.5.0",
  "itertools",
@@ -1737,7 +1737,7 @@ dependencies = [
 
 [[package]]
 name = "kodiak_server"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "actix",
  "async-trait",
@@ -1856,7 +1856,7 @@ dependencies = [
 
 [[package]]
 name = "macros"
-version = "0.1.0"
+version = "0.1.4"
 dependencies = [
  "convert_case 0.4.0",
  "kodiak_common",
@@ -2324,7 +2324,7 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
 name = "plasma_protocol"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "actix",
  "arrayvec 0.7.2",
@@ -2991,7 +2991,7 @@ dependencies = [
 
 [[package]]
 name = "server"
-version = "0.1.0"
+version = "0.1.4"
 dependencies = [
  "atomic_refcell",
  "bitvec",

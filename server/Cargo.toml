@@ -51,3 +51,9 @@ tokio = "1"
 [dev-dependencies]
 image = { version = "0.24", features = [ "png" ], default-features=false }
 imageproc = "0.23.0"
+
+[patch."https://github.com/softbearstudios/kodiak"]
+kodiak_common = { path = "../vendor/kodiak/common" }
+kodiak_macros = { path = "../vendor/kodiak/macros" }
+kodiak_server = { path = "../vendor/kodiak/server" }
+plasma_protocol = { path = "../vendor/kodiak/plasma_protocol" }

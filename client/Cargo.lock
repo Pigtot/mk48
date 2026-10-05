@@ -242,7 +242,7 @@ dependencies = [
 
 [[package]]
 name = "client"
-version = "0.1.0"
+version = "0.1.4"
 dependencies = [
  "bytemuck",
  "common",
@@ -264,7 +264,7 @@ dependencies = [
 
 [[package]]
 name = "common"
-version = "0.1.0"
+version = "0.1.4"
 dependencies = [
  "bincode",
  "bitvec",
@@ -1128,7 +1128,7 @@ dependencies = [
 
 [[package]]
 name = "kodiak_client"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "base64 0.22.1",
  "bytemuck",
@@ -1161,7 +1161,7 @@ dependencies = [
 
 [[package]]
 name = "kodiak_common"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "arrayvec",
  "fastapprox",
@@ -1184,7 +1184,7 @@ dependencies = [
 
 [[package]]
 name = "kodiak_macros"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "convert_case 0.5.0",
  "itertools 0.10.5",
@@ -1249,7 +1249,7 @@ dependencies = [
 
 [[package]]
 name = "macros"
-version = "0.1.0"
+version = "0.1.4"
 dependencies = [
  "convert_case 0.4.0",
  "kodiak_common",
@@ -1441,7 +1441,7 @@ dependencies = [
 
 [[package]]
 name = "plasma_protocol"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "arrayvec",
  "bitcode",

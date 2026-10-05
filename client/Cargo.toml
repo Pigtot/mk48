@@ -37,3 +37,9 @@ features = [
     'HtmlDivElement',
     'MouseEvent',
 ]
+
+[patch."https://github.com/softbearstudios/kodiak"]
+kodiak_client = { path = "../vendor/kodiak/client" }
+kodiak_common = { path = "../vendor/kodiak/common" }
+kodiak_macros = { path = "../vendor/kodiak/macros" }
+plasma_protocol = { path = "../vendor/kodiak/plasma_protocol" }

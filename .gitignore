@@ -7,3 +7,6 @@ terrain.png
 *.swp
 serde-test/*
 .ssh/*
+
+# Extra cargo target dirs (training-server builds)
+target-*
