@@ -9,6 +9,12 @@
 //! - Engine bots number `0..count` are driven by the network instead of the hand-written logic.
 //!   They are ordinary bots otherwise (leaderboard, names). A count >= `--bots` makes every bot an
 //!   NN bot. With an elite policy, the last of them ("NN Elite") is driven by it.
+//! - Every NN ship has its own vehicle preferences for each life (`ShipPrefs`): a persona such as
+//!   a submarine captain or a carrier admiral, so upgrade paths vary instead of all following the
+//!   network's favourite family. Aim leads moving targets (`lead_point`).
+//! - NN bots play by player rules, as in training: they keep most of their score on death and
+//!   spawn like players (`TempPlayer::nn_driven`). Bot rules would reset them to level 1-2 on
+//!   every death and often spawn them at random spots.
 //! - Autopilot: a real player whose name starts with "AI" or "NN" has their ship driven by the
 //!   network (their own steering, firing and upgrades are ignored, and they respawn automatically),
 //!   so their browser shows exactly what the NN bot sees. Names containing "ELITE" use the elite
@@ -27,7 +33,8 @@ use crate::protocol::AsCommandTrait;
 use crate::server::Server;
 use crate::team::TeamRepo;
 use crate::train::{
-    agent_commands, apply_commands, observe, pick_spawn_type, Agent, ACT_DIM, MAGIC, OBS_DIM,
+    agent_commands, apply_commands, observe, pick_spawn_type, Agent, ShipPrefs, ACT_DIM, MAGIC,
+    OBS_DIM,
 };
 use crate::world::World;
 use common::protocol::{Command, Spawn};
@@ -144,6 +151,10 @@ impl NnBots {
             .filter_map(|id| players.get(id).map(|t| (id, Arc::clone(t))))
             .collect();
         sync(&mut self.bots, bots);
+        for agent in &self.bots {
+            // Player rules (keep score on death, spawn like a player), as in training.
+            agent.tuple.borrow_player_mut().nn_driven = true;
+        }
         let mut pilots: Vec<(PlayerId, Arc<PlayerTuple>)> = players
             .iter()
             .filter(|t| {
@@ -177,8 +188,9 @@ impl NnBots {
             }
             agent.ticks_alive = 0;
             agent.active = false;
+            agent.new_life();
             let score = agent.tuple.borrow_player().score;
-            if let Some(entity_type) = pick_spawn_type(score, agent.ship_group) {
+            if let Some(entity_type) = pick_spawn_type(score, agent) {
                 let alias = name.map(|n| PlayerAlias::new_sanitized(&n));
                 let _ = Command::Spawn(Spawn { alias, entity_type })
                     .as_command()
@@ -244,7 +256,9 @@ fn sync(agents: &mut Vec<Agent>, wanted: Vec<(PlayerId, Arc<PlayerTuple>)>) {
     agents.retain(|a| wanted.iter().any(|(id, t)| *id == a.player_id && Arc::ptr_eq(t, &a.tuple)));
     for (id, tuple) in wanted {
         if !agents.iter().any(|a| a.player_id == id) {
-            agents.push(Agent::new(tuple, id));
+            let mut agent = Agent::new(tuple, id);
+            agent.ship_prefs = Some(ShipPrefs::random());
+            agents.push(agent);
         }
     }
 }

@@ -31,6 +31,7 @@ use common::guidance::Guidance;
 use common::protocol::{Command, Control, Fire, Spawn, Upgrade};
 use common::terrain;
 use common::ticks::Ticks;
+use common::transform::Transform;
 use common::util::level_to_score;
 use common::velocity::Velocity;
 use kodiak_server::glam::Vec2;
@@ -39,6 +40,7 @@ use kodiak_server::rand::{thread_rng, Rng};
 use kodiak_server::{BotAction, PlayerId};
 use std::f32::consts::PI;
 use std::fs::File;
+use std::collections::HashMap;
 use std::io::{BufReader, BufWriter, ErrorKind, Read, Write};
 use std::os::fd::FromRawFd;
 use std::process::ExitCode;
@@ -63,10 +65,12 @@ pub const OBS_DIM: usize =
 /// (salvo > 0 with fire > 0: also fire every other ready weapon that can engage the target)
 pub const ACT_DIM: usize = 10;
 
-/// score, alive, died, kills, score_delta, health_lost, fired, level, death_cause, damage_dealt
+/// score, alive, died, kills, score_delta, health_lost, fired, level, death_cause, damage_dealt,
+/// board_rank
 /// (death_cause: 0 none, 1 terrain, 2 border, 3 weapon, 4 ram/collision, 5 obstacle, 6 other;
-/// damage_dealt: boats' worth of weapon damage dealt this step)
-pub const INFO_DIM: usize = 10;
+/// damage_dealt: boats' worth of weapon damage dealt this step; board_rank: scoreboard position
+/// among everyone in the world, bots included, 1 = top, 0 = bottom)
+pub const INFO_DIM: usize = 11;
 /// With `--expert-labels`, each info row is followed by the built-in bot's choice for the same
 /// observation, expressed in the agent's action space: `ACT_DIM` values, then valid, aim_valid.
 pub const EXPERT_DIM: usize = ACT_DIM + 2;
@@ -77,6 +81,19 @@ const SHIP_GROUPS: usize = 4;
 /// Spawn protection lasts 20s (`entity_extension.rs`); the player can count this themselves.
 const SPAWN_PROTECTION_TICKS: u32 = 200;
 
+/// What the agents are to the game (`--agent-kind`).
+#[derive(Copy, Clone, PartialEq)]
+enum AgentKind {
+    /// Players (the default, as in training).
+    Player,
+    /// Engine bots under bot rules: score reset to level 1-2 on death, often random spawns, and
+    /// built-in bots attack them at any level. What NN bots in the playable server used to get.
+    Bot,
+    /// Engine bots driven by the network: player rules except that built-in bots still treat
+    /// them as bots. What NN bots in the playable server get (`nn_bots.rs`).
+    NnBot,
+}
+
 struct Config {
     agents: usize,
     bots: usize,
@@ -84,10 +101,15 @@ struct Config {
     bot_aggression: f32,
     /// Agents ignore actions and run the built-in bot logic (baseline measurement).
     scripted_agents: bool,
+    agent_kind: AgentKind,
     spawn_type: Option<EntityType>,
     in_fd: Option<i32>,
     out_fd: Option<i32>,
     expert_labels: bool,
+    /// Agents get random per-life vehicle preferences (`ShipPrefs`), as NN bots in the playable server.
+    ship_style: bool,
+    /// Aim ahead of moving targets (`lead_point`); `--no-lead` aims at their current position.
+    lead_aim: bool,
 }
 
 impl Config {
@@ -102,10 +124,13 @@ impl Config {
             ticks_per_step: 2,
             bot_aggression: 1.0,
             scripted_agents: false,
+            agent_kind: AgentKind::Player,
             spawn_type: None,
             in_fd: None,
             out_fd: None,
             expert_labels: false,
+            ship_style: false,
+            lead_aim: true,
         };
         let mut it = args.iter();
         while let Some(flag) = it.next() {
@@ -117,6 +142,14 @@ impl Config {
                 cfg.expert_labels = true;
                 continue;
             }
+            if flag == "--ship-style" {
+                cfg.ship_style = true;
+                continue;
+            }
+            if flag == "--no-lead" {
+                cfg.lead_aim = false;
+                continue;
+            }
             let value = it.next().ok_or(format!("missing value for {flag}"))?;
             let bad = |e: &dyn std::fmt::Display| format!("bad value for {flag} ({value}): {e}");
             match flag.as_str() {
@@ -126,6 +159,14 @@ impl Config {
                 "--in-fd" => cfg.in_fd = Some(value.parse().map_err(|e| bad(&e))?),
                 "--out-fd" => cfg.out_fd = Some(value.parse().map_err(|e| bad(&e))?),
                 "--bot-aggression" => cfg.bot_aggression = value.parse().map_err(|e| bad(&e))?,
+                "--agent-kind" => {
+                    cfg.agent_kind = match value.as_str() {
+                        "player" => AgentKind::Player,
+                        "bot" => AgentKind::Bot,
+                        "nn-bot" => AgentKind::NnBot,
+                        _ => return Err(bad(&"expected player, bot or nn-bot")),
+                    }
+                }
                 "--spawn-type" => {
                     cfg.spawn_type = Some(
                         EntityType::iter()
@@ -159,6 +200,11 @@ pub(crate) struct Agent {
     pub(crate) active: bool,
     /// Preferred ship group for upgrades and respawns (learned via the last action).
     pub(crate) ship_group: usize,
+    /// Per-life vehicle preferences for upgrades and respawns (`--ship-style`); `None` follows
+    /// the network's ship-family head.
+    pub(crate) ship_prefs: Option<ShipPrefs>,
+    /// Aim where a snapped target will be when the weapon arrives (off with `--no-lead`).
+    pub(crate) lead_aim: bool,
     /// Built-in bot asked for its choice on the agent's own view (`--expert-labels`).
     shadow: Option<Bot>,
 }
@@ -178,12 +224,45 @@ impl Agent {
             ticks_alive: 0,
             active: false,
             ship_group: thread_rng().gen_range(0..SHIP_GROUPS),
+            ship_prefs: None,
+            lead_aim: true,
             shadow: None,
         }
     }
 
     pub(crate) fn is_alive(&self) -> bool {
         self.tuple.borrow_player().is_alive()
+    }
+
+    /// Call before respawning: a new life gets new vehicle preferences.
+    pub(crate) fn new_life(&mut self) {
+        if self.ship_prefs.is_some() {
+            self.ship_prefs = Some(ShipPrefs::random());
+        }
+    }
+}
+
+/// Vehicle preferences for one life, so NN ships take varied upgrade paths instead of all
+/// following the network's favourite family. A persona (a weight per ship family, e.g. a
+/// submarine captain) times a weight per ship; every upgrade and respawn takes the best-weighted
+/// option, weak ships only when nothing else is available.
+pub(crate) struct ShipPrefs {
+    family: [f32; SHIP_GROUPS],
+    ship: HashMap<EntityType, f32>,
+}
+
+impl ShipPrefs {
+    pub(crate) fn random() -> Self {
+        let mut rng = thread_rng();
+        Self {
+            family: std::array::from_fn(|_| rng.gen_range(0.2..1.0)),
+            ship: EntityType::iter().map(|t| (t, rng.gen::<f32>())).collect(),
+        }
+    }
+
+    fn weight(&self, entity_type: EntityType) -> f32 {
+        let family = ship_group(entity_type.data().sub_kind).map_or(0.0, |g| self.family[g]);
+        family * self.ship.get(&entity_type).copied().unwrap_or(0.0)
     }
 }
 
@@ -222,10 +301,19 @@ pub fn run(args: &[String]) -> ExitCode {
 
     let mut agents: Vec<Agent> = (0..cfg.agents)
         .map(|i| {
-            let player_id = PlayerId::nth_client(i).unwrap();
-            let mut agent = Agent::new(new_player(player_id), player_id);
+            let player_id = match cfg.agent_kind {
+                AgentKind::Player => PlayerId::nth_client(i),
+                // After the built-in bots' ids.
+                AgentKind::Bot | AgentKind::NnBot => PlayerId::nth_bot(cfg.bots + i),
+            }
+            .unwrap();
+            let tuple = new_player(player_id);
+            tuple.borrow_player_mut().nn_driven = cfg.agent_kind == AgentKind::NnBot;
+            let mut agent = Agent::new(tuple, player_id);
             agent.scripted = cfg.scripted_agents.then(Bot::default);
             agent.shadow = cfg.expert_labels.then(Bot::default);
+            agent.ship_prefs = cfg.ship_style.then(ShipPrefs::random);
+            agent.lead_aim = cfg.lead_aim;
             agent
         })
         .collect();
@@ -329,6 +417,7 @@ pub fn run(args: &[String]) -> ExitCode {
             agent.ticks_alive += cfg.ticks_per_step;
         }
         kill_log.clear();
+        let board: Vec<u32> = players.iter().map(|t| t.borrow_player().score).collect();
 
         for (i, agent) in agents.iter_mut().enumerate() {
             let row = &mut out[i * (OBS_DIM + info_dim)..(i + 1) * (OBS_DIM + info_dim)];
@@ -353,6 +442,7 @@ pub fn run(args: &[String]) -> ExitCode {
             };
             if !alive {
                 // Respawn immediately so the next observation starts a new life.
+                agent.new_life();
                 spawn_agent(&mut world, agent, &players, &mut teams, cfg.spawn_type);
                 agent.ticks_alive = 0;
                 agent.active = false;
@@ -382,6 +472,10 @@ pub fn run(args: &[String]) -> ExitCode {
             let damage_dealt = agent.tuple.borrow_player().damage_dealt;
             info[9] = damage_dealt - agent.prev_damage_dealt;
             agent.prev_damage_dealt = damage_dealt;
+            // Share of the others ranked below (ties count half; `board` includes this agent).
+            let below = board.iter().filter(|s| **s < score).count() as f32;
+            let ties = board.iter().filter(|s| **s == score).count().saturating_sub(1) as f32;
+            info[10] = (below + 0.5 * ties) / board.len().saturating_sub(1).max(1) as f32;
 
             agent.was_alive = now_alive;
             agent.prev_score = score;
@@ -414,16 +508,28 @@ pub fn run(args: &[String]) -> ExitCode {
     }
 }
 
-/// Highest-level affordable boat, preferring the given ship family.
-pub(crate) fn pick_spawn_type(score: u32, ship_group: usize) -> Option<EntityType> {
+/// Highest-level affordable boat, as the agent prefers (see [`choose_ship`]).
+pub(crate) fn pick_spawn_type(score: u32, agent: &Agent) -> Option<EntityType> {
     let max_level = EntityType::spawn_options(score, false)
         .map(|t| t.data().level)
         .max()?;
-    choose_in_group(
+    choose_ship(
         EntityType::spawn_options(score, false).filter(|t| t.data().level == max_level),
-        ship_group,
-        &mut thread_rng(),
+        agent,
     )
+}
+
+/// The agent's vehicle preferences for this life if it has them, else its ship family.
+fn choose_ship(options: impl Iterator<Item = EntityType>, agent: &Agent) -> Option<EntityType> {
+    let Some(prefs) = &agent.ship_prefs else {
+        return choose_in_group(options, agent.ship_group, &mut thread_rng());
+    };
+    let all: Vec<EntityType> = options.collect();
+    let strong: Vec<EntityType> = all.iter().copied().filter(|t| !is_weak_ship(*t)).collect();
+    let options = if strong.is_empty() { all } else { strong };
+    options
+        .into_iter()
+        .max_by(|a, b| prefs.weight(*a).total_cmp(&prefs.weight(*b)))
 }
 
 fn spawn_agent(
@@ -436,7 +542,7 @@ fn spawn_agent(
     let score = agent.tuple.borrow_player().score;
     let entity_type = spawn_type
         .filter(|t| t.can_spawn_as(score, false))
-        .or_else(|| pick_spawn_type(score, agent.ship_group));
+        .or_else(|| pick_spawn_type(score, agent));
     let Some(entity_type) = entity_type else {
         return;
     };
@@ -658,19 +764,26 @@ pub(crate) fn agent_commands(
         let aim_range = data.sensors.max_range();
         let mut aim = transform.position + (forward * aim_local.x + left * aim_local.y) * aim_range;
         let snap_radius_squared = (AIM_SNAP * aim_range).powi(2);
+        let class = ((action[5] + 1.0) * 0.5 * WEAPON_CLASSES as f32)
+            .clamp(0.0, WEAPON_CLASSES as f32 - 1.0) as usize;
         if let Some((_, target)) = others
             .iter()
             .filter(|c| c.player_id() != Some(agent.player_id) && is_target(*c))
-            .map(|c| (c.transform().position.distance_squared(aim), c.transform().position))
+            .map(|c| (c.transform().position.distance_squared(aim), *c.transform()))
             .filter(|(d, _)| *d < snap_radius_squared)
             .min_by(|a, b| a.0.total_cmp(&b.0))
         {
-            aim = target;
+            aim = target.position;
+            // Lead the target, as a player aims ahead of a moving ship. Turrets also turn
+            // toward this point while the network waits to fire.
+            if agent.lead_aim {
+                if let Some(point) = lead_point(data, class, transform.position, &target) {
+                    aim = point;
+                }
+            }
         }
 
         let fire = if action[4] > 0.0 {
-            let class = ((action[5] + 1.0) * 0.5 * WEAPON_CLASSES as f32)
-                .clamp(0.0, WEAPON_CLASSES as f32 - 1.0) as usize;
             best_armament(&boat, data, aim, class).map(|armament_index| Fire { armament_index })
         } else {
             None
@@ -682,14 +795,19 @@ pub(crate) fn agent_commands(
         };
 
         agent.active = action[7] > 0.0;
-        agent.ship_group = ((action[8] + 1.0) * 0.5 * SHIP_GROUPS as f32)
-            .clamp(0.0, SHIP_GROUPS as f32 - 1.0) as usize;
-        let upgrade = choose_in_group(
+        agent.ship_group = if agent.ship_prefs.is_some() {
+            // The preferences choose ships; the network sees its current family as its preference,
+            // as it did in training.
+            ship_group(data.sub_kind).unwrap_or(1)
+        } else {
+            ((action[8] + 1.0) * 0.5 * SHIP_GROUPS as f32).clamp(0.0, SHIP_GROUPS as f32 - 1.0)
+                as usize
+        };
+        let upgrade = choose_ship(
             boat_type
                 .upgrade_options(score, false)
                 .filter(|t| t.data().level == data.level + 1),
-            agent.ship_group,
-            &mut thread_rng(),
+            agent,
         );
 
         (
@@ -840,6 +958,38 @@ fn command_to_action(
 
 /// Picks the ready armament of the given class that best points at `aim` (same rules as the
 /// built-in bot: turret must be within azimuth, and non-vertical weapons within 60 degrees).
+/// Where to aim so that a weapon of the given class meets `target`, assuming it holds course and
+/// speed (torpedoes, guns, missiles/rockets; aircraft follow the aim point and other classes are
+/// dropped or defensive). `None` if the weapon can't catch it within its range.
+fn lead_point(data: &EntityData, class: usize, shooter: Vec2, target: &Transform) -> Option<Vec2> {
+    if class > 2 {
+        return None;
+    }
+    let weapon = data
+        .armaments
+        .iter()
+        .map(|a| a.entity_type.data())
+        .find(|w| w.kind == EntityKind::Weapon && weapon_class(w.sub_kind) == Some(class))?;
+    let speed = weapon.speed.to_mps();
+    let velocity = target.direction.to_vec() * target.velocity.to_mps();
+    // |offset + velocity * t| = speed * t, smallest positive t.
+    let offset = target.position - shooter;
+    let a = velocity.length_squared() - speed * speed;
+    let b = 2.0 * offset.dot(velocity);
+    let c = offset.length_squared();
+    let t = if a.abs() < 1e-3 {
+        -c / b
+    } else {
+        let root = (b * b - 4.0 * a * c).sqrt();
+        [(-b - root) / (2.0 * a), (-b + root) / (2.0 * a)]
+            .into_iter()
+            .filter(|t| *t > 0.0)
+            .min_by(f32::total_cmp)?
+    };
+    let max_secs = if weapon.lifespan == Ticks::ZERO { f32::INFINITY } else { weapon.lifespan.to_secs() };
+    (t.is_finite() && t > 0.0 && t <= max_secs).then(|| target.position + velocity * t)
+}
+
 fn best_armament<C: ContactTrait>(
     boat: &C,
     data: &EntityData,

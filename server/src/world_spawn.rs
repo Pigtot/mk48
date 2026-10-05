@@ -44,13 +44,15 @@ impl World {
     ) -> bool {
         let retry = initial_radius > 0.0;
         let is_bot = entity.is_boat() && { entity.borrow_player().player_id.is_bot() };
+        // NN-driven bots search as hard as players for a safe spot.
+        let bot_rules = entity.is_boat() && { entity.borrow_player().has_bot_rules() };
         if retry {
             let start_time = Instant::now();
             let mut rng = thread_rng();
             let mut radius = initial_radius.max(1.0);
             let center = entity.transform.position;
             let (max_attempts, mut threshold): (u32, f32) = if entity.is_boat() {
-                if is_bot {
+                if bot_rules {
                     (128, 4.0)
                 } else {
                     (1024, 6.0)

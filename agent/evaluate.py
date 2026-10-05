@@ -3,6 +3,7 @@
     python evaluate.py random
     python evaluate.py bot                 # agents run the built-in bot logic
     python evaluate.py runs/ppo/model.zip  # trained PPO policy
+    python evaluate.py runs/ppo_elite/policy.pt --agent-kind nn-bot  # as an NN bot in the playable server
 
 Rates are per game-minute alive-or-dead, with 95% confidence intervals computed over
 (agent x game-minute) samples.
@@ -18,7 +19,8 @@ import numpy as np
 
 from pathlib import Path
 
-from mk48env import DEATH_CAUSE, DEATH_CAUSES, DIED, FIRED, KILLS, LEVEL, SCORE_DELTA, SERVER, Mk48VecEnv, ServerConfig
+from mk48env import (BOARD_RANK, DAMAGE_DEALT, DEATH_CAUSE, DEATH_CAUSES, DIED, FIRED, KILLS, LEVEL, SCORE, SCORE_DELTA, SERVER,
+                     Mk48VecEnv, ServerConfig)
 
 
 TYPES_FILE = Path(__file__).with_name("entity_types.tsv")  # from `server types`
@@ -27,9 +29,24 @@ WEAPON_NAMES = ["torpedo", "gun", "missile", "aircraft", "depth/mine", "SAM", "d
 
 
 def type_names() -> dict[int, str]:
+    return {i: t[0] for i, t in type_table().items()}
+
+
+def type_table() -> dict[int, tuple[str, str, int]]:
+    """id -> (name, sub kind, level)."""
     if not TYPES_FILE.exists():
         return {}
-    return {int(r[0]): r[1] for r in (line.split("\t") for line in TYPES_FILE.read_text().splitlines())}
+    rows = (line.split("\t") for line in TYPES_FILE.read_text().splitlines())
+    return {int(r[0]): (r[1], r[3], int(r[4])) for r in rows}
+
+
+def ship_family(sub_kind: str) -> str:
+    """Ship families as in the server's `ship_group`."""
+    if sub_kind == "Submarine":
+        return "submarine"
+    if sub_kind in ("Battleship", "Cruiser", "Destroyer", "Dreadnought", "Corvette", "MissileBoat", "Lcs", "Mtb"):
+        return "surface"
+    return "carrier" if sub_kind == "Carrier" else "other"
 
 
 def ci95(x: np.ndarray) -> tuple[float, float]:
@@ -37,12 +54,14 @@ def ci95(x: np.ndarray) -> tuple[float, float]:
 
 
 def evaluate(policy: str, minutes: float, agents: int, bots: int, procs: int, device: str,
-             stochastic: bool = False, server_path: Path = SERVER) -> dict:
+             stochastic: bool = False, server_path: Path = SERVER, agent_kind: str = "player",
+             ship_style: bool = False, lead_aim: bool = True) -> dict:
     scripted = policy == "bot"
     expert = policy == "expert"  # the bot's choices replayed through the agent's action space
     env = Mk48VecEnv(
         n_procs=procs,
         server=ServerConfig(agents=agents, bots=bots, scripted_agents=scripted, expert_labels=expert,
+                            agent_kind=agent_kind, ship_style=ship_style, lead_aim=lead_aim,
                             server_path=server_path),
         max_episode_steps=10**9,
     )
@@ -63,7 +82,10 @@ def evaluate(policy: str, minutes: float, agents: int, bots: int, procs: int, de
     steps_per_minute = int(60 / (env.server_cfg.ticks_per_step * 0.1))
     n_steps = int(minutes * steps_per_minute)
     obs = env.reset()
-    per_min = {k: np.zeros((n_steps // steps_per_minute, env.num_envs)) for k in ("score", "kills", "deaths", "fired")}
+    per_min = {k: np.zeros((n_steps // steps_per_minute, env.num_envs))
+               for k in ("score", "kills", "deaths", "fired", "damage")}
+    # What the scoreboard shows: current score (which deaths can wipe, unlike score/min) and position.
+    board = {k: np.zeros_like(per_min["score"]) for k in ("board_score", "board_rank")}
     max_level = np.zeros(env.num_envs)
     causes = np.zeros(len(DEATH_CAUSES))
     # Per-vehicle stats (only when the observation carries the exact ship type).
@@ -111,6 +133,11 @@ def evaluate(policy: str, minutes: float, agents: int, bots: int, procs: int, de
             per_min["kills"][m] += info[:, KILLS]
             per_min["deaths"][m] += info[:, DIED]
             per_min["fired"][m] += info[:, FIRED]
+            if env.has_damage_dealt:
+                per_min["damage"][m] += info[:, DAMAGE_DEALT]
+            board["board_score"][m] += info[:, SCORE] / steps_per_minute
+            if env.has_board_rank:
+                board["board_rank"][m] += info[:, BOARD_RANK] / steps_per_minute
         max_level = np.maximum(max_level, info[:, LEVEL])
         if env.has_death_cause:
             for c in info[info[:, DIED] > 0, DEATH_CAUSE].astype(int):
@@ -118,27 +145,44 @@ def evaluate(policy: str, minutes: float, agents: int, bots: int, procs: int, de
     elapsed = time.perf_counter() - t0
     env.close()
 
+    damage = per_min.pop("damage")
     result = {k: ci95(v.ravel()) for k, v in per_min.items()}
+    if env.has_damage_dealt:
+        # Weapon damage dealt in boats' worth (1 = a whole boat), and per decision that fired.
+        result["damage"] = ci95(damage.ravel())
+        result["damage_per_shot"] = float(damage.sum() / max(per_min["fired"].sum(), 1))
+    result["board_score"] = ci95(board["board_score"].ravel())
+    if env.has_board_rank:
+        result["board_rank"] = ci95(board["board_rank"].ravel())
     kills, deaths = per_min["kills"].sum(), per_min["deaths"].sum()
     result["kd"] = kills / max(deaths, 1)
     result["max_level_mean"] = float(max_level.mean())
     result["agent_steps_per_sec"] = n_steps * env.num_envs / elapsed
     if by_type:
-        names = type_names()
+        table = type_table()
         total = sum(r[0] for r in by_type.values())
         result["by_type"] = {}
+        families: dict[str, float] = {}
         for tid, r in sorted(by_type.items(), key=lambda kv: -kv[1][0]):
             minutes = r[0] / steps_per_minute
             mix = {WEAPON_NAMES[c]: round(float(r[5 + c] / max(r[4], 1)), 2) for c in range(V6_CLASSES) if r[5 + c]}
-            result["by_type"][names.get(tid, str(tid))] = {
+            name, sub_kind, level = table.get(tid, (str(tid), "", 0))
+            family = ship_family(sub_kind)
+            families[family] = families.get(family, 0.0) + float(r[0] / total)
+            result["by_type"][name] = {
+                "level": level, "family": family,
                 "share": float(r[0] / total), "score_per_min": float(r[1] / minutes),
                 "kd": float(r[2] / max(r[3], 1)), "fires_per_min": float(r[4] / minutes), "weapon_mix": mix,
             }
+        result["family_share"] = families
     if causes.sum():
         result["death_causes"] = {DEATH_CAUSES[i]: int(c) for i, c in enumerate(causes) if c}
     # Score/min per 10-minute block, to separate early game from steady state.
     blocks = per_min["score"].shape[0] // 10
     result["score_by_10min"] = [float(per_min["score"][10 * b : 10 * (b + 1)].mean()) for b in range(blocks)]
+    if env.has_board_rank:
+        result["board_rank_by_10min"] = [float(board["board_rank"][10 * b : 10 * (b + 1)].mean())
+                                         for b in range(blocks)]
     return result
 
 
@@ -152,13 +196,28 @@ def main() -> None:
     p.add_argument("--device", default="cpu")
     p.add_argument("--stochastic", action="store_true", help="sample actions instead of using the mean")
     p.add_argument("--server", type=Path, default=SERVER, help="server binary (older models need older builds)")
+    p.add_argument("--agent-kind", choices=["player", "bot", "nn-bot"], default="player",
+                   help="agents as players (training), or as the playable server's NN bots: nn-bot "
+                        "(player rules) or bot (bot rules: score reset on death, random spawns)")
+    p.add_argument("--ship-style", action="store_true",
+                   help="random per-life vehicle preferences (as NN bots in the game) instead of the ship-family head")
+    p.add_argument("--no-lead", action="store_true", help="aim at targets' current position instead of leading them")
     p.add_argument("--save", metavar="LABEL", help="append the result to runs/evals.json under this label")
     a = p.parse_args()
-    r = evaluate(a.policy, a.minutes, a.agents, a.bots, a.procs, a.device, a.stochastic, a.server)
-    print(f"policy={a.policy}  ({a.agents * a.procs} agents x {a.minutes} game-min)")
+    r = evaluate(a.policy, a.minutes, a.agents, a.bots, a.procs, a.device, a.stochastic, a.server, a.agent_kind,
+                 a.ship_style, not a.no_lead)
+    print(f"policy={a.policy}  ({a.agents * a.procs} agents x {a.minutes} game-min, as {a.agent_kind})")
     for k in ("score", "kills", "deaths", "fired"):
         mean, ci = r[k]
         print(f"  {k + '/min':12s} {mean:8.2f} ± {ci:.2f}")
+    if "damage" in r:
+        mean, ci = r["damage"]
+        print(f"  {'damage/min':12s} {mean:8.2f} ± {ci:.2f}   (boats' worth; per shot {r['damage_per_shot']:.3f})")
+    mean, ci = r["board_score"]
+    print(f"  {'board score':12s} {mean:8.1f} ± {ci:.1f}   (current score, as on the scoreboard)")
+    if "board_rank" in r:
+        mean, ci = r["board_rank"]
+        print(f"  {'board rank':12s} {mean:8.0%} ± {ci:.0%}   (100% = top of the scoreboard, 50% = middle)")
     print(f"  {'K/D':12s} {r['kd']:8.2f}")
     print(f"  {'max level':12s} {r['max_level_mean']:8.2f}")
     print(f"  throughput   {r['agent_steps_per_sec']:8.0f} agent-steps/s")
@@ -168,16 +227,28 @@ def main() -> None:
             mix = ", ".join(f"{k} {v:.0%}" for k, v in sorted(t["weapon_mix"].items(), key=lambda kv: -kv[1]))
             print(f"    {name:13s} {t['share']:5.1%}  {t['score_per_min']:6.1f}  {t['kd']:5.2f}  "
                   f"{t['fires_per_min']:5.1f}  {mix}")
+    if r.get("family_share"):
+        print("  time by family: " + ", ".join(f"{k} {v:.0%}" for k, v in sorted(r["family_share"].items(),
+                                                                             key=lambda kv: -kv[1])))
+        levels: dict[int, list[tuple[str, float]]] = {}
+        for name, t in r["by_type"].items():
+            levels.setdefault(t["level"], []).append((name, t["share"]))
+        print("  ships by level (time share):")
+        for level in sorted(levels):
+            print(f"    {level:2d}: " + ", ".join(f"{n} {s:.1%}" for n, s in sorted(levels[level], key=lambda x: -x[1])))
     if r.get("death_causes"):
         print("  death causes: " + ", ".join(f"{k} {v}" for k, v in r["death_causes"].items()))
     if r["score_by_10min"]:
         print("  score/min by 10-min block: " + " ".join(f"{x:.1f}" for x in r["score_by_10min"]))
+    if r.get("board_rank_by_10min"):
+        print("  board rank by 10-min block: " + " ".join(f"{x:.0%}" for x in r["board_rank_by_10min"]))
     if a.save:
         path = Path("runs/evals.json")
         evals = json.loads(path.read_text()) if path.exists() else []
         evals = [e for e in evals if e["label"] != a.save]
         evals.append({"label": a.save, "policy": a.policy, "minutes": a.minutes,
-                      "agents": a.agents * a.procs, "bots_per_world": a.bots, **r})
+                      "agents": a.agents * a.procs, "bots_per_world": a.bots, "agent_kind": a.agent_kind,
+                      "ship_style": a.ship_style, "lead_aim": not a.no_lead, **r})
         path.parent.mkdir(exist_ok=True)
         path.write_text(json.dumps(evals, indent=1))
 

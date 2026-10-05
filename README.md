@@ -22,6 +22,11 @@ What was added to the game itself:
 - **AI bots in the real game:** players named "NN 1", "NN 2"… are driven by the neural network,
   and naming yourself "AI" lets the AI drive your ship (`server/src/nn_bots.rs`).
 - **A safety reflex** that keeps AI ships from crashing into oil platforms and land.
+- **Fair rules for AI bots:** in the real game they keep their points when sunk and spawn like
+  players, as they did in practice (`server/src/player.rs`).
+- **Smarter aim:** AI ships aim where a moving ship will be, not where it is now.
+- **Ship personalities:** every AI ship picks its own upgrade path (submarines, carriers,
+  battleships…) instead of all following the same one.
 - **A scoreboard that shows everyone**, bots included (`server/src/server.rs` and the engine copy
   in `vendor/kodiak`).
 

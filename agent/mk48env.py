@@ -35,6 +35,8 @@ SCORE, ALIVE, DIED, KILLS, SCORE_DELTA, HEALTH_LOST, FIRED, LEVEL = range(8)
 DEATH_CAUSE = 8
 DAMAGE_DEALT = 9
 DEATH_CAUSES = ["none", "terrain", "border", "weapon", "ram/collision", "obstacle", "other"]
+# Then the scoreboard position among everyone in the world, bots included (1 = top, 0 = bottom).
+BOARD_RANK = 10
 # With expert_labels, the last act_dim + 2 info values are the built-in bot's action for the same
 # observation, then valid and aim_valid flags. Use Mk48VecEnv.expert_offset to locate them.
 SERVER_BC = ROOT / "server" / "target-bc" / "release" / "server"
@@ -77,6 +79,11 @@ class ServerConfig:
     scripted_agents: bool = False  # agents run the built-in bot (baseline)
     expert_labels: bool = False  # append the built-in bot's action for each observation
     spawn_type: str | None = None
+    # "player" (training), or as the playable server's NN bots: "nn-bot" (player rules, current)
+    # or "bot" (bot rules: score reset to level 1-2 on death, random spawns; before the fix).
+    agent_kind: str = "player"
+    ship_style: bool = False  # random per-life vehicle preferences, as NN bots in the game
+    lead_aim: bool = True  # aim ahead of moving targets (False: at their current position)
     server_path: Path = SERVER
 
     def args(self) -> list[str]:
@@ -93,6 +100,12 @@ class ServerConfig:
             args.append("--expert-labels")
         if self.spawn_type:
             args += ["--spawn-type", self.spawn_type]
+        if self.agent_kind != "player":
+            args += ["--agent-kind", self.agent_kind]
+        if self.ship_style:
+            args.append("--ship-style")
+        if not self.lead_aim:
+            args.append("--no-lead")
         return args
 
 
@@ -172,6 +185,8 @@ class Mk48VecEnv(VecEnv):
         expert_width = s.act_dim + 2 if self.server_cfg.expert_labels else 0
         self.expert_offset = s.info_dim - expert_width if expert_width else None
         self.has_death_cause = s.info_dim - expert_width > DEATH_CAUSE
+        self.has_board_rank = s.info_dim - expert_width > BOARD_RANK
+        self.has_damage_dealt = s.info_dim - expert_width > DAMAGE_DEALT
         super().__init__(s.n * n_procs, observation_space, action_space)
         self.last_info = None
         self._ep = None

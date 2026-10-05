@@ -117,6 +117,9 @@ pub struct TempPlayer {
     pub status: Status,
     /// Total weapon damage dealt to other players' boats, in boats' worth (statistic only).
     pub damage_dealt: f32,
+    /// Engine bot driven by the neural network (`nn_bots.rs`). It plays by player rules, as it
+    /// did in training, instead of bot rules (see `has_bot_rules`).
+    pub nn_driven: bool,
 }
 
 impl TempPlayer {
@@ -132,11 +135,18 @@ impl TempPlayer {
             hint: Hint::default(),
             status: Status::Spawning,
             damage_dealt: 0.0,
+            nn_driven: false,
         }
     }
 
     pub fn is_bot(&self) -> bool {
         self.player_id.is_bot()
+    }
+
+    /// Whether bot-only rules apply: score reset on death, random spawn position, quicker spawn
+    /// search. NN-driven bots play by player rules.
+    pub fn has_bot_rules(&self) -> bool {
+        self.is_bot() && !self.nn_driven
     }
 
     pub fn team_id(&self) -> Option<TeamId> {

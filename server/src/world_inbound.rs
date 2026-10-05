@@ -68,7 +68,7 @@ impl CommandTrait for Spawn {
 
         let mut rng = thread_rng();
 
-        if !(player.is_bot() && rng.gen()) {
+        if !(player.has_bot_rules() && rng.gen()) {
             // Default to spawning near the center of the world, with more points making you spawn further north.
             let raw_spawn_y = map_ranges(
                 score_to_level(player.score) as f32,

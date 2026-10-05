@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from mk48env import ALIVE, Mk48VecEnv, ServerConfig
+from mk48env import ALIVE, BOARD_RANK, Mk48VecEnv, ServerConfig
 
 
 @pytest.fixture
@@ -33,6 +33,34 @@ def test_scripted_agents_score():
             _, _, _, _ = env.step(np.zeros((4, env.action_space.shape[0]), np.float32))
             total += env._ep["score_gain"].sum()
         assert total > 0
+    finally:
+        env.close()
+
+
+@pytest.mark.parametrize("kind", ["player", "bot", "nn-bot"])
+def test_agent_kinds_and_board_rank(kind):
+    """Agents can play as engine bots (as in the playable server); scoreboard position is reported."""
+    env = Mk48VecEnv(server=ServerConfig(agents=2, bots=6, agent_kind=kind))
+    try:
+        env.reset()
+        assert env.has_board_rank
+        for _ in range(100):
+            obs, _, _, _ = env.step(np.zeros((2, env.action_space.shape[0]), np.float32))
+        rank = env.last_info[:, BOARD_RANK]
+        assert ((rank >= 0) & (rank <= 1)).all()
+        assert obs[:, 0].mean() > 0.5
+    finally:
+        env.close()
+
+
+def test_ship_style_and_no_lead():
+    """Per-life vehicle preferences and aiming without lead are accepted and play normally."""
+    env = Mk48VecEnv(server=ServerConfig(agents=2, bots=6, ship_style=True, lead_aim=False))
+    try:
+        env.reset()
+        for _ in range(50):
+            obs, _, _, _ = env.step(np.zeros((2, env.action_space.shape[0]), np.float32))
+        assert np.isfinite(obs).all() and obs[:, 0].mean() > 0.5
     finally:
         env.close()
 

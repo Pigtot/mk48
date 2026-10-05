@@ -406,7 +406,7 @@ impl Mutation {
         let entity = &mut world.entities[index];
         let mut player = entity.borrow_player_mut();
         let respawn_score = respawn_score(player.score, killer_score, loot_value, player.rank);
-        player.score = if player.is_bot() {
+        player.score = if player.has_bot_rules() {
             // Make sure there are bots in the shallow area.
             respawn_score.min(level_to_score(rng.gen_range(1..=2)))
         } else {

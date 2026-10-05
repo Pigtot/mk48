@@ -27,6 +27,9 @@ and so on.*
   - gets sunk only about **half as often**.
 - **Safe and fair:** everything runs on your own computer, on a private copy of the game. The bots
   never play on the public mk48 servers.
+- **Improved after watching it play:** fair rules for the AI in the real game, smarter aiming,
+  and a different ship path for every AI bot (see
+  [What we fixed after watching it play](#what-we-fixed-after-watching-it-play)).
 
 ---
 
@@ -51,6 +54,8 @@ That means: 12 AI bots (the last one is the elite) and 40 of the game's normal b
    - **anything else**: you play yourself and fight the AI bots. Hold the mouse button to steer,
      click to fire, press 1–9 to pick a weapon, R to dive with a submarine, and scroll to zoom.
 3. To stop the game, press **Ctrl+C** in the terminal where it's running.
+
+To make all 12 AI bots elites, give only the elite: `./run_game.sh models/elite_15M.pt 12 40`.
 
 ---
 
@@ -227,6 +232,39 @@ Every bot was tested the same way: brand-new games, 2 test bots per game plus 32
 
 Results wiggle a bit from test to test (about ±4 points), so we only trust comparisons made in
 the same test run.
+
+---
+
+## What we fixed after watching it play
+
+When we watched the real game, **NN Elite was often near the bottom of the scoreboard**, even
+though it beat every other bot in our tests. Here's why, and what we changed.
+
+**1. The game was harsher on it than on a player.** In the real game the AI ships count as
+"bots", and the game treats bots differently: when a bot sinks, its points drop back to almost
+zero (a player keeps most of theirs), and it often comes back at a random spot, sometimes right
+next to a battleship. In practice the AI had always played as a normal player. Now the AI ships
+follow player rules in the real game too. In a test copy of the real game (12 AI bots and 40
+normal bots, one hour), the AI's average place on the scoreboard went from about the **middle
+(58%)** to the **top quarter (77%)**. 100% means first place and 50% the middle.
+
+**2. The scoreboard shows points right now, not skill.** A ship that just sank shows almost
+nothing. And the AI is weakest at the start: in the smallest boats it earns about 10 points a
+minute, in a battleship 60 to 90. So for the first ~10 minutes it sits mid-table, then climbs.
+
+**3. Smarter aiming.** The AI used to aim at where an enemy ship *is*. But shells and torpedoes
+take time to arrive, and by then the ship has moved. Now it aims at where the ship *will be*, like
+a quarterback throwing to where the receiver is running. In the same test it dealt **18% more
+damage** and sank **15% more ships**.
+
+**4. Different ships for different bots.** The AI always picked surface warships (patrol boat,
+destroyer, cruiser, battleship), so every AI bot followed the same path. Now each AI ship gets a
+random personality for each life, like a submarine captain or a carrier admiral, and it decides
+which ship to upgrade to at every level. In a test, the AI spent **24% of its time in submarines
+and 7% in aircraft carriers** (before: none). The trade-off is about **11% fewer points**, and in
+a busy game its average place on the scoreboard drops from 77% to 68%, because the AI never
+practised submarines and carriers. Practising with personalities switched on should fix that;
+that's the next step.
 
 ---
 

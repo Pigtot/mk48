@@ -87,6 +87,56 @@ All raw results: `results/evals.json` (a snapshot; new evaluations are appended 
 `runs/evals.json`). Per-vehicle breakdowns and death causes:
 `python evaluate.py <policy> --server ../server/target/release/server ...`.
 
+### In the playable server
+
+In the game the NN ships are engine bots, and the scoreboard shows each ship's *current* score,
+which a death can wipe. `evaluate.py --agent-kind` reproduces that: `player` (as in training),
+`bot` (bot rules, as NN bots had before the fix) or `nn-bot` (player rules, as now). It also
+reports the average current score ("board score") and scoreboard position ("board rank": the
+share of other ships ranked below, 100% = top, 50% = middle). Same batch per checkpoint:
+
+| Played as… | Elite 6M: score/min, deaths/min, board rank | Elite 15M: score/min, deaths/min, board rank |
+|---|---|---|
+| player (training conditions) | 49.6, 0.04, 83% | 53.1, 0.05, 85% |
+| engine bot, bot rules (the game before the fix) | 40.0, 0.07, 70% | 52.4, 0.07, 77% |
+| engine bot, player rules (the game after the fix) | 48.2, 0.06, 78% | 51.7, 0.06, 83% |
+
+With the game's own mix, 12 copies of the elite and 40 built-in bots per world (elite 15M):
+
+| 12 NN + 40 bots | Score/min | Deaths/min | K/D | Board score | Board rank (first 10 min → last 10) |
+|---|---|---|---|---|---|
+| bot rules (before the fix) | 37.1 | 0.17 | 2.8 | 430 | 58% (47% → 60%) |
+| player rules | 56.2 | 0.13 | 5.2 | 806 | 77% (50% → 86%) |
+| player rules + lead aim + ship personas (the game now) | 43.2 | 0.17 | 3.4 | 541 | 68% (44% → 80%) |
+
+Why the elite sat in the bottom half of the live scoreboard:
+
+- **Bot rules.** Every death reset it to level 1–2, and half its respawns were at random spots,
+  sometimes next to battleships. It is weakest exactly there: ~10 score/min in level-1 boats
+  against 60–90 in battleships.
+- **Crowding.** With 12 elite copies (built-in bots attack bots of any level, and the copies fight
+  each other), deaths rose from 0.07 to 0.17/min.
+- **Early game.** Even under player rules its board rank is ~45–50% in the first 10 minutes and
+  climbs to 85–98% once it reaches big ships. The live scoreboard was read ~15 minutes in.
+
+### Aiming and ship personas
+
+Same batch, elite 15M, 2 agents + 32 bots per world, 8 worlds × 60 game-minutes. Damage is weapon
+damage dealt, in boats' worth; per shot means per decision that fired.
+
+| Elite 15M | Score/min | Kills/min | Damage/min | Damage per shot | Board rank | Time by ship family |
+|---|---|---|---|---|---|---|
+| aim at the target's position (before) | 53.5 | 0.75 | 1.30 | 0.096 | 85% | surface 100% |
+| lead aim | 53.0 | 0.86 | 1.53 | 0.107 | 86% | surface 100% |
+| lead aim + ship personas | 47.4 | 0.74 | 1.31 | 0.103 | 78% | surface 68%, submarine 24%, carrier 7%, other 1% |
+
+Leading adds ~18% damage and ~15% kills at the same score and death rate. Personas spread the
+ships over every family, with 3–6 different ships at most levels (level 8: Montana, TuoChiang,
+Yasen, Zumwalt, Kirov; level 9: Yamato, Seawolf, Clemenceau), but cost ~11% score/min here and
+more in the crowded game mix (board rank 77% → 68%): the elite never practised submarines and
+carriers in training (Seawolf 33/min vs Yamato 63/min at level 9; the Clemenceau carrier does
+well at 79/min).
+
 ---
 
 ## How the network works
@@ -120,7 +170,7 @@ Decisions are made 5 times a second, as a set of choices:
 | Salvo (elite) | also fire every other ready weapon that can hit the target |
 | Submerge | yes / no (submarines) |
 | Active sensors | on / off (they reveal you) |
-| Ship family | preferred family for upgrades and respawns |
+| Ship family | preferred family for upgrades and respawns (in the game, ship personas decide instead; see below) |
 
 These are turned into the game's normal control message (heading, speed, aim point, fire weapon
 N, submerge, sensors), so the network uses exactly the controls a player has. Upgrades happen as
@@ -156,11 +206,29 @@ The network makes the decisions; a few fixed rules sit around it:
   after ~6 s of contact; the network saw them in every case and still pushed in (a habit copied
   from the built-in bot). Same checkpoint, before the guard and with its final version:
   navigation deaths 81 → 3, deaths/min 0.15 → 0.04, K/D 3.1 → 14.1.
-- **Aim snapping:** the aim point snaps to a visible enemy within 15% of sensor range, like
-  clicking on a ship rather than beside it.
+- **Aim snapping and lead** (`lead_point` in `../server/src/train.rs`): the aim point snaps to a
+  visible enemy within 15% of sensor range, like clicking on a ship rather than beside it, and then
+  moves to where that ship will be when the weapon arrives (its speed and heading, the chosen
+  weapon's speed and range). Guns, rockets and straight-running torpedoes go where the aim point
+  was at launch, and homing weapons only search a cone around their launch direction, so aiming at
+  the ship's current position missed moving targets (the built-in bot does that too, and the
+  network learned it from the bot). Turrets also turn toward the lead point while the network
+  waits to fire. `--no-lead` turns it off for comparison.
+- **Ship personas** (`ShipPrefs` in `../server/src/train.rs`, on for every NN ship in the game,
+  `--ship-style` in training/evaluation): each life draws a weight per ship family (submarine,
+  surface, carrier, other) times a weight per ship, and every upgrade and respawn takes the
+  best-weighted option. The network's own family head always chose surface ships (the elite never
+  drove a submarine or carrier in 60 game-minutes × 16 ships), so every NN ship followed nearly
+  the same upgrade path. With personas each ship takes its own path: a submarine captain, a
+  carrier admiral, a destroyer captain, … and fights accordingly.
 - **Weak ships avoided:** NN bots don't pick the Olympias (ram), Dredger, Lublin (minelayer, whose
   mines drop behind it) or Tanker. They came last at their level in every evaluation and took
   ~23% of the elite's time.
+- **Player rules for NN bots** (`nn_driven` in `../server/src/player.rs`): in the playable
+  server the NN ships are engine bots, and bots normally play by harsher rules: a death resets
+  their score to level 1–2, half their spawns are at random spots, and the search for a safe
+  spawn spot is shorter. NN bots play by player rules instead, as in training. Built-in bots still
+  treat them as bots and attack them at any level. See [In the playable server](#in-the-playable-server).
 
 ---
 
@@ -239,8 +307,9 @@ kills at the same death rate). Late in the run the policy drifted far from the i
 
 | File | What it does |
 |---|---|
-| `../server/src/train.rs` | Headless training mode, observation/action encoding, expert labels, collision guard |
+| `../server/src/train.rs` | Headless training mode, observation/action encoding, expert labels, collision guard, lead aim, ship personas, `--agent-kind`, scoreboard rank |
 | `../server/src/nn_bots.rs` | NN control of engine bots and `AI…` autopilot players in the normal server |
+| `../server/src/player.rs` | `nn_driven` / `has_bot_rules`: NN bots play by player rules (used in `world_mutation.rs`, `world_inbound.rs`, `world_spawn.rs`) |
 | `../server/src/bot.rs` | Built-in bot (now also exposes its firing solution for labels) |
 | `../server/src/world_mutation.rs` | Damage-dealt statistic used by the elite reward |
 | `../server/src/server.rs` | Scoreboard shows everyone (`LEADERBOARD_SIZE`, `LIVEBOARD_BOTS`); NN hooks |
@@ -249,7 +318,7 @@ kills at the same death rate). Late in the run the policy drifted far from the i
 | `entity_policy.py` | Entity-transformer policy, action/label conversion, save/load |
 | `train_bc_entity.py` | Imitation (DAgger) |
 | `ppo_entity.py` | PPO with KL anchor, fp16, frozen opponents, reward presets |
-| `evaluate.py` | Fresh-world evaluation, per-vehicle stats, death causes |
+| `evaluate.py` | Fresh-world evaluation, per-vehicle stats, death causes, damage per shot, scoreboard score and rank, time per ship family; `--agent-kind`, `--ship-style`, `--no-lead` |
 | `serve_policy.py` | Runs main + elite policies for the game server |
 | `plot_training.py` | 3D viridis chart (`runs/training.png`) and 2D chart |
 | `plot_nn_3d.py` | 3D views of the networks: training losses, loss landscape, the elite's neurons at one game moment |
@@ -277,6 +346,8 @@ After Setup, from this folder:
     --steps 15000000 --run ppo_elite
 .venv/bin/python evaluate.py runs/ppo_elite/policy.pt --server ../server/target/release/server \
     --device mps --agents 2 --bots 32 --procs 8 --minutes 60 --save "elite"
+.venv/bin/python evaluate.py models/elite_15M.pt --device mps --agents 12 --bots 40 --procs 4 \
+    --minutes 60 --agent-kind nn-bot --ship-style   # as in the game: 12 NN bots + 40 built-in bots
 .venv/bin/python plot_training.py
 .venv/bin/python -m pytest -q
 ```
@@ -297,8 +368,14 @@ training started.
   it track ships that dive or move out of view.
 - **Opponents are bots and frozen copies.** A league of past elite versions (self-play) would make
   it more robust against human tactics.
-- **Ship choice is coarse:** a family preference plus excluded weak ships. Learning the exact
-  upgrade would let it pick, say, the Kolkata or Arleigh Burke on purpose.
+- **Ship choice is random, not learned:** personas give variety, and weak ships are excluded, but
+  the network doesn't pick the ship that suits it, and it plays submarines and carriers worse than
+  surface ships because it never practised them (personas cost ~11% score/min). Fine-tuning with
+  `--ship-style` on would let it practise every family; learning the exact upgrade would let it
+  pick, say, the Kolkata on purpose.
+- **One playing style:** different ships fight differently, but the decisions come from one
+  network. Distinct learned strategies (an ambusher, a hunter, a collector) need separate or
+  style-conditioned training runs (each ~4 h on this machine).
 - **Not done: playing from screen pixels.** The original plan's last step is a vision network that
   plays through the browser from screenshots. Here, a pixel network would learn by copying this
   state-based policy (teacher → student).
