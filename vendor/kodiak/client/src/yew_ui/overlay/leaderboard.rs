@@ -65,6 +65,9 @@ pub fn leaderboard_overlay(props: &LeaderboardProps) -> Html {
         width: 13rem;
         max-width: 100%;
         line-height: 120%;
+        display: block;
+        max-height: 55vh;
+        overflow-y: auto;
 
         td.name {
             font-weight: bold;
@@ -105,7 +108,8 @@ pub fn leaderboard_overlay(props: &LeaderboardProps) -> Html {
     let core_state = use_core_state();
     let profile_factory = profile_factory(&ctw);
 
-    let count = if is_mobile() { 5 } else { 10 };
+    // Local server: list everyone (the board scrolls), not just the top 10.
+    let count = if is_mobile() { 20 } else { 100 };
 
     let (items, footer) = if props.liveboard {
         let extra = core_state
