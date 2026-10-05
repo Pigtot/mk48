@@ -181,6 +181,7 @@ Runs: v2 (board reward, personas, self-play, diving; 4M steps), v2b (v2 + defenc
 | v2b (4M) | 67% (79%) | 67% | 73%, 0.069 | 42.1 | 5/5 |
 | v3 | 83% (90%) | 66% | 71%, 0.069 | 30.1 | 4/5 |
 | v4 | 81% (90%) | **70%** | 69%, 0.100 | 29.1 | 5/5 |
+| v4 at 1M steps | 84% (91%) | – | – | – | – |
 
 **The new elite is v2b's 3M checkpoint** (`models/elite_v2b_3M.pt`): 85% in two independent runs of the top-10%
 scenario, 93% after the first 20 minutes, 0.04 deaths/min against 0.087, the best hostile rank and
