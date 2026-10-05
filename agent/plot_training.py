@@ -47,8 +47,9 @@ MILESTONES = {
     "imitation, transformer + 7 weapons": "imitation (NN bots)",
     "v5 PPO (1007616 steps)": "v5 PPO",
     "expert: bot via action space": "expert",
-    "elite 4M, no guard": "elite, no guard",
-    "elite 4M + guard v3 (hull-aware)": "elite + guard",
+    "elite 4M, no guard": "no guard",
+    "elite 6M + guard (final batch)": "elite 6M",
+    "elite 15M + guard (final)": "elite 15M (final)",
 }
 
 RUN_NOTES = {

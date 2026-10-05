@@ -213,7 +213,7 @@ def sheet(values: np.ndarray, rows: int, cols: int):
 
 def main() -> None:
     p = argparse.ArgumentParser()
-    p.add_argument("--elite", default="models/elite_6M.pt")
+    p.add_argument("--elite", default="models/elite_15M.pt")
     p.add_argument("--imitation", default="models/bc_v6.pt")
     p.add_argument("--run", default="runs/ppo_elite")
     p.add_argument("--device", default="mps")

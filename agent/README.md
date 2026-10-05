@@ -1,296 +1,302 @@
-# mk48 neural-network bots
+# Teaching an AI to play mk48
 
-Neural-network players for [mk48](https://github.com/SoftbearStudios/mk48), the open-source naval
-combat game (AGPL-3.0), trained on a server you run yourself. You can play against them, or watch
-the game through their eyes, in the real web client.
+This folder contains AI players ("bots") that learned to play **mk48**, a free online game where
+you captain a warship. They use **neural networks**, the same basic technology behind image
+recognition and chatbots. This page explains what we built and how it works, without assuming you
+know any AI.
 
-Everything runs on your machine, against the game in this repository. Nothing here connects to
-mk48.io, CrazyGames or any other public server, and there is no anti-detection code of any kind.
+*Want the code-level details? See [TECHNICAL.md](TECHNICAL.md).*
 
-![Training and evaluation](results/training.png)
+![An AI-driven ship in the real game](results/game_ai_elite.png)
+
+*The real game running on this computer. The ship in the middle, "AI Elite", is being driven by the
+neural network. The list on the right is the scoreboard: the AI bots are named "NN 1", "NN 2",
+and so on.*
+
+---
+
+## The short version
+
+- **The game:** you sail a ship, pick up barrels and coins for points, and fight other ships with
+  torpedoes, guns, missiles and more. More points let you upgrade to bigger ships.
+- **What we built:** AI bots that look at the game and decide what to do 5 times a second,
+  completely on their own.
+- **The result:** the best bot, **NN Elite**, compared with the bots that come with the game:
+  - scores about **2× as many points** (55 vs 26 per minute);
+  - sinks about **7× as many ships** (one every ~75 seconds vs one every ~9 minutes);
+  - gets sunk only about **half as often**.
+- **Safe and fair:** everything runs on your own computer, on a private copy of the game. The bots
+  never play on the public mk48 servers.
+
+---
+
+## Try it yourself
+
+You need a Mac or Linux computer. The one-time setup builds the game and installs the AI tools;
+the steps are in **[Setup](#setup-once)** below.
+
+Then start the game with AI bots (from this `agent` folder):
+
+```bash
+./run_game.sh models/bc_v6.pt 12 40 models/elite_15M.pt
+```
+
+That means: 12 AI bots (the last one is the elite) and 40 of the game's normal bots. Then:
+
+1. Open **https://localhost:8443** in Chrome or Safari. Your browser will warn that the connection
+   isn't private. That's because your own computer is the server. Click "Advanced" and continue.
+2. Type a name and press Play:
+   - **`AI Elite`**: the elite AI drives your ship and you watch through its eyes.
+   - **`AI`**: a regular AI bot drives your ship.
+   - **anything else**: you play yourself and fight the AI bots. Hold the mouse button to steer,
+     click to fire, press 1–9 to pick a weapon, R to dive with a submarine, and scroll to zoom.
+3. To stop the game, press **Ctrl+C** in the terminal where it's running.
+
+---
+
+## How does the AI "see" the game?
+
+You see the game as pictures on a screen. The AI gets the same information, but as a list of
+numbers, **1,201 numbers** every time it decides. It only gets what a human player could see, not
+hidden information.
+
+- **About its own ship:** health, speed, direction, position, which weapons are loaded, what type
+  of ship it is, and so on.
+- **About the 24 closest things it can see** (enemy ships, torpedoes heading its way, barrels,
+  oil platforms…): where each one is, how fast it's moving, what kind of thing it is, and whether
+  a loaded weapon could hit it right now.
+- **A small map** of the land and sea around the ship, so it doesn't run aground.
+
+## How does it decide what to do?
+
+Five times a second, the AI makes a set of choices, the same controls a human player has:
+
+| Choice | Options |
+|---|---|
+| Steer | 16 directions (like points on a compass) |
+| Speed | 5 settings, from reverse to full speed |
+| Target | which of the visible ships or torpedoes to aim at (or none) |
+| Fire? | yes or no |
+| Which weapon | torpedo, gun, missile, aircraft, depth charge, anti-air missile, decoy |
+| Salvo? | fire every weapon that can hit the target, all at once (elite only) |
+| Dive? | for submarines |
+| Sonar/radar on? | finds enemies better, but also gives away your position |
+| Next ship | which kind of ship to upgrade to |
+
+## What is a neural network, really?
+
+A neural network is a **very big math formula** with lots of adjustable numbers in it, called
+**weights**. Ours has about **880,000** of them. Numbers go in (the 1,201 things it sees), the
+formula mixes them together in many layers, and numbers come out (its choices).
+
+At first, the weights are random, so the choices are random. The ship just wanders around, about
+as badly as pressing random buttons (that scores about 4 points per minute). **Training** means slowly adjusting the weights until
+the formula gives good choices. Nobody writes rules like "turn left when a torpedo comes". The
+network has to discover them from experience.
+
+Our network is a type called a **transformer**, the same building block used in chatbots. It treats
+every ship, torpedo and barrel it sees as a separate item and compares them all with each other.
+That's how it can figure out things like "that destroyer is the biggest threat, but this small
+boat is the easiest target".
+
+---
+
+## How it learned, in four steps
+
+Learning to play is a bit like learning a sport. Here's what happened.
+
+### Step 1: A practice field that runs super fast
+
+Playing the real game in a browser, a bot can make about 10 decisions per second. That's far too
+slow, because a neural network needs *millions* of practice decisions. So we added a special
+**training mode** to the game: the same rules and physics, but no graphics, running as fast as the
+computer can. It makes about **18,000 decisions per second**, and up to 64 ships learn at the same
+time.
+
+The final elite practiced for **15 million decisions**. That's about **35 days of nonstop play**,
+squeezed into about **4 hours**.
+
+### Step 2: Copying a teacher (imitation learning)
+
+The game already comes with simple computer bots, written by hand by the game's creators. We
+used one as a **teacher**:
+
+1. The AI plays the game.
+2. In every situation, the teacher bot is asked: "What would *you* do right now?"
+3. The AI adjusts its weights to make its own choice closer to the teacher's.
+
+It's like learning tennis by playing while a coach shouts "move left!" whenever you're out of
+position. The AI was the one driving, so it also learned how to recover from its *own* mistakes.
+(The fancy name for this method is **DAgger**.) After about 640,000 coached moments, it played a
+little better than its teacher (34 vs about 26 points per minute).
+
+### Step 3: Practice with a score (reinforcement learning)
+
+Copying only makes you as good as your teacher. To get *better*, the AI then played on its own,
+earning and losing **reward points**:
+
+- ✅ points for collecting barrels and coins, damaging enemies and sinking ships;
+- ❌ points taken away for being hit and for sinking.
+
+After each round of practice, it nudges its weights so that the choices that led to more reward
+become more likely. That's **reinforcement learning**, the same way you might train a dog with
+treats. The method we used is called **PPO**.
+
+There's one catch. If you let it change too fast, it can forget everything it copied from the
+teacher. That really happened in an early version: its score dropped from 28 to 18. So we added a
+**"leash"** that keeps it close to what it learned from the teacher at first, and slowly loosens
+over time.
+
+### Step 4: The elite
+
+For the **NN Elite**, we changed the rewards to make it **aggressive but careful**:
+
+- extra points for every bit of damage it deals, and 3× points for sinking a ship;
+- bigger penalties for getting hit and for sinking, so it learns to dodge and hide;
+- a new **salvo** move: fire torpedoes, guns and missiles all at once;
+- tougher practice opponents: frozen copies of the other AI bots, not just the simple game bots.
+
+Different ships ended up using different tactics. For example, missile corvettes fire mostly
+missiles, the Dreadnought battleship mostly guns, and destroyers a mix of torpedoes, guns and
+depth charges.
+
+### A safety reflex
+
+While watching the AI play, we noticed something odd. About **40% of its deaths** came from
+crashing into oil platforms and staying stuck against them. Oil platforms are surrounded by
+barrels, and the AI wanted the barrels badly. It had learned that habit from its teacher.
+
+So we added a **safety reflex**, like the automatic braking in a car. If the ship is touching an
+oil platform or land, or is about to run into one (or off the edge of the map), it turns to the
+nearest safe direction. Everything else is still decided by the neural network. In tests of the
+same AI with and without the reflex, crash deaths fell from **81 to 3**.
+
+---
+
+## The pictures, explained
+
+### How the bots improved
+
+![Training and test results](results/training.png)
+
+- **Left:** each "wall" is one version of the AI. It shows how its score went up during practice
+  (the horizontal axis is the number of practice decisions, in millions). Yellow means high
+  scores, purple low. The front wall is the elite.
+- **Right:** a fair test of each version. Every bot starts a brand-new game against 32 normal
+  bots and plays for an hour. Each row of bars is one bot, and each bar is one 10-minute stretch
+  of that hour. Taller, yellower bars mean more points. Every bot starts slowly (small ships, few
+  points) and speeds up as it upgrades. The elite rows are the tallest.
+
+### Inside the neural network
+
+![3D views of the network](results/nn_3d.png)
+
+- **Left, training "losses":** numbers the training process watches, like a fitness tracker for
+  learning. Each wall is one measurement over the 15 million practice decisions. The big spikes
+  at the start are the warm-up.
+- **Middle, the "loss landscape":** imagine the network's 880,000 weights as a position on a
+  hilly map, where height means "how wrong are its choices". We can only draw two directions out
+  of 880,000, so this is a slice of that map. Training walks downhill. The **red dot** is where
+  training ended up: at the bottom of the bowl, where the network's choices best match the
+  teacher's.
+- **Right, the network "thinking":** every dot is one artificial neuron at one real moment in the
+  game. Bright dots are active, dark ones are quiet. From left to right:
+  1. what it sees (the 1,201 input numbers);
+  2. the transformer layers comparing every object with every other;
+  3. a summary of the whole situation;
+  4. its decisions.
+
+  The caption shows what it chose at that moment, for example "target the enemy G5, fire torpedo
+  + salvo".
+
+---
+
+## Results
+
+Every bot was tested the same way: brand-new games, 2 test bots per game plus 32 normal game bots,
+60 minutes of game time, repeated in 8 separate games.
+
+| Bot | Points per minute | Ships sunk per minute | Times sunk per minute | Kills per death |
+|---|---|---|---|---|
+| **NN Elite (final)** | **55** | **0.81** | **0.04** | **19** |
+| NN Elite (halfway, 6M decisions) | 48–50 | 0.52–0.62 | 0.02–0.04 | 13–24 |
+| Imitation bot (copied the teacher) | 34 | 0.30 | 0.16 | 1.9 |
+| The game's own bot (the teacher) | 23–30 | 0.11 | 0.08 | 1.3 |
+| AI that practiced from scratch, no teacher | 24 | 0.18 | 0.14 | 1.3 |
+| Random button-mashing | 4 | 0.03 | 0.15 | 0.2 |
+
+Results wiggle a bit from test to test (about ±4 points), so we only trust comparisons made in
+the same test run.
+
+---
+
+## Things that didn't work (and what we learned)
+
+| What we tried | What happened | Lesson |
+|---|---|---|
+| Training many AIs in the same game | They scored great… by sinking *each other*. Against normal bots they were weak. | Test against opponents you didn't train with. |
+| Never restarting the practice games | The AI got good at "late game" and forgot how to start. | Restart practice games regularly. |
+| A simpler network that averaged its answers | When unsure between two ships it aimed *between* them, and hit nothing. | Make it pick one choice, not an average. |
+| Copying the teacher's trigger exactly | The teacher fires at random moments, so the AI never learned when to fire. | Copy *when a shot is possible*, not the random timing. |
+| Practicing with points, with no "leash" | It forgot what it had copied and got worse. | Keep it close to what it already knows at first. |
+| Trusting the AI to avoid oil platforms | 40% of its deaths were crashes. | Add a simple safety reflex. |
+
+---
+
+## Words to know
+
+- **Neural network:** a big adjustable math formula that turns inputs (what it sees) into outputs
+  (what it does).
+- **Weights:** the adjustable numbers inside the network. Training changes them.
+- **Training:** adjusting the weights, little by little, so the network makes better choices.
+- **Imitation learning:** learning by copying a teacher's choices.
+- **Reinforcement learning:** learning by trial and error, using reward points.
+- **Reward:** points the AI gets during practice for good outcomes (or loses for bad ones). They're
+  separate from the game's own score.
+- **Loss:** a number measuring how wrong the network is. Training tries to make it smaller.
+- **Transformer:** a kind of neural network that compares many items with each other. It's also
+  used in chatbots.
+- **PPO:** the specific trial-and-error training method used here (Proximal Policy Optimization).
+- **K/D:** kills per death, meaning ships sunk divided by times sunk.
 
 ---
 
 ## Setup (once)
 
-From the repository root, on macOS (Apple Silicon) or Linux:
+From the repository root (the folder above this one):
 
 ```bash
-# Rust: the game pins a nightly toolchain; the web client is built with trunk.
+# Rust (the game's programming language) and the web-game builder
 rustup toolchain install nightly-2024-04-20 && rustup override set nightly-2024-04-20
 rustup target add wasm32-unknown-unknown
 cargo install --locked trunk --version 0.21.7
 (cd client && trunk build --release --minify --no-sri --skip-version-check --filehash false)
-(cd server && cargo build --release)   # one binary: the game server and the `train` mode
+(cd server && cargo build --release)
 
-# Python 3.12 environment for the networks
+# Python and the AI libraries
 cd agent
 uv venv --python 3.12 .venv
 uv pip install --python .venv/bin/python torch gymnasium stable-baselines3 numpy tensorboard matplotlib pytest
 .venv/bin/python -m pytest -q
 ```
 
-On macOS the C compiler needs the Xcode license accepted once (`sudo xcodebuild -license`).
-Build the client before the server: the server embeds the built client.
-
-## Quick start
-
-```bash
-./run_game.sh models/bc_v6.pt 12 40 models/elite_6M.pt
-```
-
-Arguments: main policy, NN bots, built-in bots, optional elite policy. Run it from this folder;
-it keeps running until Ctrl+C, and refuses to start if a server is already on port 8443.
-
-1. Open **https://localhost:8443** and click past the certificate warning (your own server uses a
-   self-signed certificate).
-2. Pick a name and press Play:
-   - **`AI Elite`**: the elite network drives your ship and you see exactly what it sees.
-   - **`AI`**: a regular NN bot drives your ship.
-   - anything else: you play yourself (hold the mouse to steer, click to fire, 1–9 pick a
-     weapon, R dives/surfaces a submarine, scroll to zoom).
-3. NN bots are named **NN 1, NN 2, …** and the elite is **NN Elite**. The scoreboard lists
-   everyone, bots included (it scrolls).
-
-mk48 is a top-down game, so there is no first-person camera; "through its eyes" means your
-browser shows the NN ship's own view.
+On a Mac, the C compiler needs the Xcode license accepted once: `sudo xcodebuild -license`.
 
 ---
 
-## Results
+## What's in this folder
 
-Every policy is measured the same way: **fresh worlds** (everyone starts at level 1), 2 agents
-plus 32 built-in bots per world, 8 worlds, 60 game-minutes each. "Score" is the game's own score
-(pickups and kills) per game-minute.
-
-| Policy | Score/min | Kills/min | Deaths/min | K/D |
-|---|---|---|---|---|
-| **Elite at 6M steps** (in the game as `NN Elite`) | **48.0 ± 2.9** | 0.58 | **0.02** | **24.3** |
-| Elite at 4M steps | 45.7–49.2 | 0.57–0.59 | 0.04 | 14–17 |
-| Expert: the built-in bot's logic, played through the NN action interface | 42–59 | 0.38–0.60 | 0.09–0.12 | 4–5 |
-| Imitation policy (`bc_v6`, the regular NN bots) | 33.5 ± 3.2 | 0.30 | 0.16 | 1.9 |
-| Built-in bot | 23–30 | 0.11 | 0.08 | 1.3 |
-| Best PPO trained from scratch (v3) | 23.9 ± 2.8 | 0.18 | 0.14 | 1.3 |
-| Random actions | 3.9 ± 1.1 | 0.03 | 0.15 | 0.2 |
-
-The elite kills about 5× as often as the built-in bot and dies less than a third as often.
-The ± is a 95% interval within one evaluation batch; separate batches of the same policy have
-varied by more than that (up to ~±5), so only same-batch comparisons are used for decisions.
-
-All raw results: `results/evals.json` (a snapshot; new evaluations are appended to
-`runs/evals.json`). Per-vehicle breakdowns and death causes:
-`python evaluate.py <policy> --server ../server/target/release/server ...`.
-
----
-
-## How the network works
-
-### What it sees
-
-Only what a real player's client is sent (`World::get_player_complete` on the server), encoded
-as 1,201 numbers per decision:
-
-- **Own ship (40):** health, speed, heading, position, distance to the world edge, level and
-  progress to the next, submerged, which weapon types are ready, sensor ranges, own active-sensor
-  setting, time since spawn, upgrade available, exact ship type.
-- **24 nearest contacts × 39:** position, velocity and heading relative to the ship; kind (ship,
-  weapon, aircraft, pickup, obstacle, …); exact type, or "unidentified blip" if sensors can't tell;
-  friendly or not; level; altitude; weapon type; pickup value (coin 10, crate 2, barrel 1); and for
-  each of 7 weapon types, *can a ready weapon hit this contact right now* (the player sees turret
-  arcs and reload bars).
-- **Map:** a 15×15 grid of land and border around the ship, rotated to the ship's heading.
-
-### What it can do
-
-Decisions are made 5 times a second, as a set of choices:
-
-| Head | Options |
+| File | What it is |
 |---|---|
-| Steering | 16 directions relative to the current heading |
-| Throttle | 5 levels (including reverse) |
-| Target | point at one of the visible contacts, or "none" |
-| Fire | yes / no |
-| Weapon type | torpedo, gun, missile/rocket, aircraft, depth charge/mine, SAM, decoy |
-| Salvo (elite) | also fire every other ready weapon that can hit the target |
-| Submerge | yes / no (submarines) |
-| Active sensors | on / off (they reveal you) |
-| Ship family | preferred family for upgrades and respawns |
+| `models/` | The trained networks. `elite_15M.pt` is the best; `bc_v6.pt` is the imitation bot. |
+| `results/` | Test results and the pictures on this page. |
+| `run_game.sh` | Starts the game with AI bots. |
+| `entity_policy.py` | The neural network itself. |
+| `train_bc_entity.py` | Step 2: copying the teacher. |
+| `ppo_entity.py` | Steps 3 and 4: practice with reward points, and the elite. |
+| `evaluate.py` | The fair test used for the results table. |
+| `plot_training.py`, `plot_nn_3d.py` | Make the pictures. |
+| `TECHNICAL.md` | Full technical details for programmers. |
 
-These are turned into the game's normal control message (heading, speed, aim point, fire weapon
-N, submerge, sensors), so the network uses exactly the controls a player has. Upgrades happen as
-soon as they are affordable.
-
-### Architecture
-
-An **entity transformer** (`entity_policy.py`):
-
-- Every contact becomes a token (small MLP), plus one token for the own ship and one for the map
-  (small CNN over the 15×15 grid). Ship types get a learned embedding, so the same network can
-  play a submarine differently from a destroyer.
-- 2 transformer layers (128 wide, 4 attention heads) let contacts be compared with each other,
-  e.g. which ship is the threat and which is the best target.
-- One categorical head per decision; the **target head is a pointer**: it scores each contact
-  token directly, so aiming is "pick a ship" rather than regressing coordinates.
-- A separate value network with the same shape is used for PPO.
-
-![Inside the networks](results/nn_3d.png)
-
-Left: the elite's training losses. Middle: the imitation network's loss over a 2D slice of weight
-space; the trained weights sit at the bottom of the bowl. Right: every neuron of the elite at one
-real game moment, from the 1,201 inputs through the token embeddings, both transformer layers and
-the latent vector to the 9 decision heads (here: torpedo an enemy with a salvo).
-
-### Rules outside the network
-
-The network makes the decisions; a few fixed rules sit around it:
-
-- **Collision guard** (`agent_commands` in `../server/src/train.rs`): if the ship touches an
-  oil platform or land, or its commanded course would hit an obstacle, land or the world border
-  within ~2 s, it takes the clear heading closest to what the network wanted. Oil platforms kill
-  after ~6 s of contact; the network saw them in every case and still pushed in (a habit copied
-  from the built-in bot). Same checkpoint, before the guard and with its final version:
-  navigation deaths 81 → 3, deaths/min 0.15 → 0.04, K/D 3.1 → 14.1.
-- **Aim snapping:** the aim point snaps to a visible enemy within 15% of sensor range, like
-  clicking on a ship rather than beside it.
-- **Weak ships avoided:** NN bots don't pick the Olympias (ram), Dredger, Lublin (minelayer, whose
-  mines drop behind it) or Tanker. They came last at their level in every evaluation and took
-  ~23% of the elite's time.
-
----
-
-## How it was trained
-
-### 1. A headless training world (fast simulation)
-
-`server train` (`../server/src/train.rs`) runs the real game world with N network-controlled
-ships and built-in bots, with no networking and no wall clock: about **18,000 agent-steps per
-second per process**, versus ~10 for a bot playing through a browser. Python talks to it over
-pipes (`mk48env.py`, a vectorized Gymnasium/Stable-Baselines3-style environment).
-
-- One episode is one life; worlds restart every 30 game-minutes (staggered) so training keeps
-  covering the early game.
-- Reward is a weighted sum of score gained, kills, death, damage taken and damage dealt, and every
-  part is logged separately.
-
-### 2. Imitation of the built-in bot (DAgger)
-
-Reinforcement learning from scratch plateaued below the built-in bot, so the network first learns
-to copy it (`train_bc_entity.py`):
-
-- Each NN ship has a "shadow" copy of the built-in bot. Every step the server asks the shadow what
-  it would do *from that ship's exact view* and sends that as the label.
-- Round 1 follows the bot; later rounds follow the network while still collecting the bot's
-  labels, so it also learns to recover from its own mistakes (DAgger). 10 rounds, ~640k samples.
-- The bot fires randomly even when it has a shot; the labels use its *firing solution* instead
-  ("a ready weapon can hit this target"), which is learnable.
-
-Result: `bc_v6`, 33.5 score/min. That's above the built-in bot, but below the bot's own logic played
-through the NN interface (the "expert", 42–59).
-
-### 3. Reinforcement learning from the imitation policy (PPO)
-
-`ppo_entity.py`, a custom PPO on the GPU (fp16):
-
-- Starts from the imitation weights. The value network is trained alone for the first 0.5M steps.
-- A KL penalty keeps the policy close to the imitation policy, fading over the run. Without it,
-  fine-tuning wiped out the imitated combat skills within a few million steps (v4: 28 → 18).
-- Exploration samples from the discrete choices instead of adding noise to aim and trigger.
-
-### 4. The elite
-
-The elite is trained like step 3, with:
-
-- an **aggressive reward**: damage dealt +2 per ship's worth, kill +3, death −4, damage taken −1.5;
-- the **salvo** action (several weapons at once);
-- **frozen NN opponents**: each world has 4 learning agents, 2 frozen copies of the imitation
-  policy and 32 built-in bots;
-- a looser KL anchor (0.1 → 0.01) so it can develop its own style;
-- the v5 PPO policy as its starting point.
-
-Checkpoints are evaluated and swapped into the game only when they win a same-batch comparison
-(4M → 6M: deaths halved, K/D 16.7 → 24.3).
-
----
-
-## What didn't work (and what it taught)
-
-| Attempt | What happened | Lesson / fix |
-|---|---|---|
-| v1: PPO, MLP, 16 learning agents per world | 50+ score/min in training, 19.6 in fresh worlds | Agents farmed each other. Evaluate in bot-dominated **fresh** worlds only. |
-| v2: same, 4 agents per world, worlds never restart | Got *worse* in fresh worlds (13.9) | It overfit to long-running worlds and lost the early game. Restart worlds every 30 min. |
-| Running the small MLP on the GPU | ~2× slower than CPU | GPU pays off only with the transformer. |
-| Imitation with an MLP and averaged (MSE) outputs | 21–25 score/min, rarely hit anything | Averaging "aim at ship A or B" or "turn left or right" gives a bad answer. Use discrete heads and a target pointer. |
-| Copying the bot's trigger pulls | Never learned to fire | The bot fires at random; label its firing solution instead. |
-| v4: PPO from imitation, no anchor | 28 → 18 score/min, K/D 0.95 → 0.26 | Add a KL anchor and value warm-up (v5, elite). |
-| Elite before the guard | ~40% of deaths from oil platforms | The platform was always visible; added the collision guard. |
-| First guard versions | Fixed platforms, but ships ran onto land / off the map | Check the whole hull and the path, not just the centerline. |
-
----
-
-## Files
-
-| File | What it does |
-|---|---|
-| `../server/src/train.rs` | Headless training mode, observation/action encoding, expert labels, collision guard |
-| `../server/src/nn_bots.rs` | NN control of engine bots and `AI…` autopilot players in the normal server |
-| `../server/src/bot.rs` | Built-in bot (now also exposes its firing solution for labels) |
-| `../server/src/world_mutation.rs` | Damage-dealt statistic used by the elite reward |
-| `../server/src/server.rs` | Scoreboard shows everyone (`LEADERBOARD_SIZE`, `LIVEBOARD_BOTS`); NN hooks |
-| `../vendor/kodiak` | Local copy of the game engine; the client's 10-row scoreboard limit raised |
-| `mk48env.py` | Vectorized environment, rewards, world restarts |
-| `entity_policy.py` | Entity-transformer policy, action/label conversion, save/load |
-| `train_bc_entity.py` | Imitation (DAgger) |
-| `ppo_entity.py` | PPO with KL anchor, fp16, frozen opponents, reward presets |
-| `evaluate.py` | Fresh-world evaluation, per-vehicle stats, death causes |
-| `serve_policy.py` | Runs main + elite policies for the game server |
-| `plot_training.py` | 3D viridis chart (`runs/training.png`) and 2D chart |
-| `plot_nn_3d.py` | 3D views of the networks: training losses, loss landscape, the elite's neurons at one game moment |
-| `run_game.sh` | Starts the playable server with NN bots |
-| `models/` | Trained networks: `bc_v6.pt` (imitation, the regular NN bots), `ppo_v5.pt`, `elite_6M.pt` (`NN Elite`) |
-| `results/` | Evaluation results (`evals.json`) and charts, as of the elite at 6M steps |
-| `train_ppo.py`, `train_bc.py` | Earlier Stable-Baselines3 MLP versions (v1–v4), kept for reference |
-
-One server build (`server/target`) serves both the game and training (`server train`). The
-networks in `models/` were trained during development against intermediate builds; `bc_v6.pt` and
-`ppo_v5.pt` use the earlier 9-action interface, and the game server and `evaluate.py` pad their
-actions (no salvo), so they run as-is.
-
----
-
-## Reproduce
-
-After Setup, from this folder:
-
-```bash
-.venv/bin/python train_bc_entity.py --device mps                          # -> runs/bc_v7
-.venv/bin/python ppo_entity.py --init runs/bc_v7/policy.pt --steps 10000000 --run ppo_v5
-.venv/bin/python ppo_entity.py --init runs/ppo_v5/policy.pt --reward aggressive \
-    --opponents 2 --opponent-policy runs/bc_v7/policy.pt --kl-start 0.1 --kl-end 0.01 \
-    --steps 15000000 --run ppo_elite
-.venv/bin/python evaluate.py runs/ppo_elite/policy.pt --server ../server/target/release/server \
-    --device mps --agents 2 --bots 32 --procs 8 --minutes 60 --save "elite"
-.venv/bin/python plot_training.py
-.venv/bin/python -m pytest -q
-```
-
-Ctrl+C or SIGTERM during training saves the model and exits. Checkpoints are written every 1M steps.
-
-Training from this source uses the 10-action interface (with salvo). The shipped `bc_v6` and
-`ppo_v5` models predate it (9 actions); the elite was upgraded from 9 to 10 actions when its
-training started.
-
----
-
-## Limitations and next steps
-
-- **Navigation is partly scripted.** The collision guard is a fixed rule. A future version could
-  learn avoidance itself, for example with a contact penalty and an "about to collide" input.
-- **No memory.** The network reacts to the current view. A recurrent layer (GRU/LSTM) would help
-  it track ships that dive or move out of view.
-- **Opponents are bots and frozen copies.** A league of past elite versions (self-play) would make
-  it more robust against human tactics.
-- **Ship choice is coarse:** a family preference plus excluded weak ships. Learning the exact
-  upgrade would let it pick, say, the Kolkata or Arleigh Burke on purpose.
-- **Not done: playing from screen pixels.** The original plan's last step is a vision network that
-  plays through the browser from screenshots. Here, a pixel network would learn by copying this
-  state-based policy (teacher → student).
+The game changes (training mode, AI bots in the real game, the safety reflex, a scoreboard that
+shows everyone) live in `../server/src/`. They're described in [TECHNICAL.md](TECHNICAL.md).

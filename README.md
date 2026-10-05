@@ -2,23 +2,28 @@
 
 mk48 neural network on mac
 
-This repository is [mk48](https://github.com/SoftbearStudios/mk48), the open-source naval combat
-game by Softbear (AGPL-3.0), plus neural-network bots trained on a server you run yourself.
+This is [mk48](https://github.com/SoftbearStudios/mk48), a free online naval combat game by
+Softbear (open source, AGPL-3.0), plus **AI players that taught themselves to play it** using neural
+networks, trained on a private copy of the game running on a Mac.
 
-**[agent/README.md](agent/README.md)** explains what the networks see and do, how they were trained,
-the results, and how to play against them or watch the game through their eyes.
+The best AI, **NN Elite**, compared with the bots that come with the game, scores about **2× the
+points**, sinks about **7× as many ships**, and gets sunk about **half as often**.
 
-![Training and evaluation](agent/results/training.png)
+- **[agent/README.md](agent/README.md):** how it works, explained simply (no AI background
+  needed), with pictures and how to play against the AI or watch through its eyes.
+- **[agent/TECHNICAL.md](agent/TECHNICAL.md):** the full technical details.
 
-Changes to the game itself:
+![How the AI bots improved](agent/results/training.png)
 
-- `server/src/train.rs`: headless training mode (`server train`), the observation and action
-  encoding, expert labels for imitation, and a collision guard for NN ships.
-- `server/src/nn_bots.rs`: NN-driven bots ("NN 1", ..., "NN Elite") and an autopilot for players
-  named "AI..." in the normal game.
-- `server/src/world_mutation.rs`, `player.rs`, `bot.rs`, `server.rs`: damage-dealt statistic, the
-  bot's firing solution for labels, NN hooks, and a scoreboard that lists everyone.
-- `vendor/kodiak`: the game engine (kodiak 0.2.0), vendored so its scoreboard can show everyone.
+What was added to the game itself:
+
+- **Training mode:** the game runs without graphics, as fast as the computer allows, so the AI can
+  practice millions of times (`server/src/train.rs`).
+- **AI bots in the real game:** players named "NN 1", "NN 2"… are driven by the neural network,
+  and naming yourself "AI" lets the AI drive your ship (`server/src/nn_bots.rs`).
+- **A safety reflex** that keeps AI ships from crashing into oil platforms and land.
+- **A scoreboard that shows everyone**, bots included (`server/src/server.rs` and the engine copy
+  in `vendor/kodiak`).
 
 Nothing here connects to mk48.io or any public server.
 
