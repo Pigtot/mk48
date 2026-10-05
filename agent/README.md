@@ -133,6 +133,13 @@ An **entity transformer** (`entity_policy.py`):
   token directly, so aiming is "pick a ship" rather than regressing coordinates.
 - A separate value network with the same shape is used for PPO.
 
+![Inside the networks](results/nn_3d.png)
+
+Left: the elite's training losses. Middle: the imitation network's loss over a 2D slice of weight
+space; the trained weights sit at the bottom of the bowl. Right: every neuron of the elite at one
+real game moment, from the 1,201 inputs through the token embeddings, both transformer layers and
+the latent vector to the 9 decision heads (here: torpedo an enemy with a salvo).
+
 ### Rules outside the network
 
 The network makes the decisions; a few fixed rules sit around it:
@@ -237,6 +244,7 @@ Checkpoints are evaluated and swapped into the game only when they win a same-ba
 | `evaluate.py` | Fresh-world evaluation, per-vehicle stats, death causes |
 | `serve_policy.py` | Runs main + elite policies for the game server |
 | `plot_training.py` | 3D viridis chart (`runs/training.png`) and 2D chart |
+| `plot_nn_3d.py` | 3D views of the networks: training losses, loss landscape, the elite's neurons at one game moment |
 | `run_game.sh` | Starts the playable server with NN bots |
 | `models/` | Trained networks: `bc_v6.pt` (imitation, the regular NN bots), `ppo_v5.pt`, `elite_6M.pt` (`NN Elite`) |
 | `results/` | Evaluation results (`evals.json`) and charts, as of the elite at 6M steps |

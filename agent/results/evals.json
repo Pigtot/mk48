@@ -4057,5 +4057,661 @@
    49.71875,
    57.33125
   ]
+ },
+ {
+  "label": "elite 6M + guard (rerun)",
+  "policy": "runs/ppo_elite/checkpoints/policy_6004736.pt",
+  "minutes": 60.0,
+  "agents": 16,
+  "bots_per_world": 32,
+  "score": [
+   49.532291666666666,
+   3.3004001243871697
+  ],
+  "kills": [
+   0.6177083333333333,
+   0.05604305595289513
+  ],
+  "deaths": [
+   0.041666666666666664,
+   0.01297308337030981
+  ],
+  "fired": [
+   14.920833333333333,
+   0.5504770579065285
+  ],
+  "kd": 14.825,
+  "max_level_mean": 9.75,
+  "agent_steps_per_sec": 2355.4366796928534,
+  "by_type": {
+   "Yamato": {
+    "share": 0.22575694444444444,
+    "score_per_min": 57.736319173152054,
+    "kd": 40.0,
+    "fires_per_min": 9.145159801901013,
+    "weapon_mix": {
+     "torpedo": 0.0,
+     "gun": 0.61,
+     "aircraft": 0.39
+    }
+   },
+   "TuoChiang": {
+    "share": 0.08080555555555556,
+    "score_per_min": 49.11481608800275,
+    "kd": 113.0,
+    "fires_per_min": 17.29975936748023,
+    "weapon_mix": {
+     "torpedo": 0.13,
+     "gun": 0.1,
+     "missile": 0.37,
+     "aircraft": 0.0,
+     "SAM": 0.4
+    }
+   },
+   "Iowa": {
+    "share": 0.07894791666666667,
+    "score_per_min": 63.64955798918063,
+    "kd": 37.5,
+    "fires_per_min": 22.72067555086423,
+    "weapon_mix": {
+     "gun": 0.49,
+     "missile": 0.43,
+     "aircraft": 0.08,
+     "depth/mine": 0.0
+    }
+   },
+   "Skjold": {
+    "share": 0.06992361111111112,
+    "score_per_min": 37.22812593107558,
+    "kd": 26.0,
+    "fires_per_min": 15.92511669480584,
+    "weapon_mix": {
+     "gun": 0.19,
+     "missile": 0.73,
+     "SAM": 0.08
+    }
+   },
+   "Momi": {
+    "share": 0.05714930555555556,
+    "score_per_min": 24.825323531198734,
+    "kd": 1.3333333333333333,
+    "fires_per_min": 11.337262288109848,
+    "weapon_mix": {
+     "torpedo": 0.27,
+     "gun": 0.48,
+     "depth/mine": 0.25
+    }
+   },
+   "Kirov": {
+    "share": 0.04435416666666667,
+    "score_per_min": 109.7463597933302,
+    "kd": 71.0,
+    "fires_per_min": 20.338186942226397,
+    "weapon_mix": {
+     "torpedo": 0.22,
+     "gun": 0.27,
+     "missile": 0.29,
+     "aircraft": 0.08,
+     "SAM": 0.13
+    }
+   },
+   "Zumwalt": {
+    "share": 0.04134722222222222,
+    "score_per_min": 57.793080282163245,
+    "kd": 34.0,
+    "fires_per_min": 26.377225394692644,
+    "weapon_mix": {
+     "torpedo": 0.1,
+     "gun": 0.39,
+     "missile": 0.31,
+     "aircraft": 0.06,
+     "SAM": 0.14
+    }
+   },
+   "Freedom": {
+    "share": 0.03831944444444445,
+    "score_per_min": 65.86625588981515,
+    "kd": 36.0,
+    "fires_per_min": 17.56071040231968,
+    "weapon_mix": {
+     "gun": 0.19,
+     "missile": 0.65,
+     "aircraft": 0.11,
+     "SAM": 0.05
+    }
+   },
+   "Type055": {
+    "share": 0.03065625,
+    "score_per_min": 85.3211009174312,
+    "kd": 29.0,
+    "fires_per_min": 17.97485558953449,
+    "weapon_mix": {
+     "torpedo": 0.18,
+     "gun": 0.12,
+     "missile": 0.41,
+     "aircraft": 0.08,
+     "SAM": 0.2
+    }
+   },
+   "Freccia": {
+    "share": 0.02878125,
+    "score_per_min": 32.211364458921466,
+    "kd": 4.0,
+    "fires_per_min": 15.99710459645313,
+    "weapon_mix": {
+     "torpedo": 0.24,
+     "gun": 0.6,
+     "depth/mine": 0.16
+    }
+   },
+   "Fletcher": {
+    "share": 0.02826388888888889,
+    "score_per_min": 30.737100737100736,
+    "kd": 1.0,
+    "fires_per_min": 18.243243243243242,
+    "weapon_mix": {
+     "torpedo": 0.27,
+     "gun": 0.58,
+     "depth/mine": 0.15
+    }
+   },
+   "Komar": {
+    "share": 0.028260416666666666,
+    "score_per_min": 12.900847769996314,
+    "kd": 3.0,
+    "fires_per_min": 13.490600810910431,
+    "weapon_mix": {
+     "torpedo": 0.44,
+     "gun": 0.23,
+     "depth/mine": 0.32
+    }
+   },
+   "Pt34": {
+    "share": 0.026881944444444444,
+    "score_per_min": 8.524928958925342,
+    "kd": 0.2,
+    "fires_per_min": 4.727460604494962,
+    "weapon_mix": {
+     "torpedo": 1.0
+    }
+   },
+   "Osa": {
+    "share": 0.02592013888888889,
+    "score_per_min": 27.608841259209644,
+    "kd": 1.5,
+    "fires_per_min": 10.127260549229739,
+    "weapon_mix": {
+     "gun": 0.46,
+     "missile": 0.54
+    }
+   },
+   "Espana": {
+    "share": 0.02464236111111111,
+    "score_per_min": 24.982386924052417,
+    "kd": 3.0,
+    "fires_per_min": 10.736931097646893,
+    "weapon_mix": {
+     "gun": 1.0
+    }
+   },
+   "Dreadnought": {
+    "share": 0.022284722222222223,
+    "score_per_min": 30.056092240573385,
+    "kd": 0.6666666666666666,
+    "fires_per_min": 14.81770021813649,
+    "weapon_mix": {
+     "torpedo": 0.47,
+     "gun": 0.53,
+     "SAM": 0.0
+    }
+   },
+   "G5": {
+    "share": 0.021746527777777778,
+    "score_per_min": 8.047261695673,
+    "kd": 0.3333333333333333,
+    "fires_per_min": 2.9698227686412264,
+    "weapon_mix": {
+     "torpedo": 1.0
+    }
+   },
+   "Kolkata": {
+    "share": 0.020600694444444446,
+    "score_per_min": 66.23967638631383,
+    "kd": 27.0,
+    "fires_per_min": 19.113433338951626,
+    "weapon_mix": {
+     "torpedo": 0.42,
+     "gun": 0.14,
+     "missile": 0.36,
+     "SAM": 0.08
+    }
+   },
+   "FairmileD": {
+    "share": 0.018569444444444444,
+    "score_per_min": 10.097232610321615,
+    "kd": 1.0,
+    "fires_per_min": 9.76065818997756,
+    "weapon_mix": {
+     "torpedo": 0.5,
+     "gun": 0.14,
+     "depth/mine": 0.36
+    }
+   },
+   "Town": {
+    "share": 0.01810763888888889,
+    "score_per_min": 38.25503355704698,
+    "kd": 2.0,
+    "fires_per_min": 29.33844678811122,
+    "weapon_mix": {
+     "torpedo": 0.42,
+     "gun": 0.53,
+     "aircraft": 0.05
+    }
+   },
+   "Bismarck": {
+    "share": 0.01670138888888889,
+    "score_per_min": 57.567567567567565,
+    "kd": 4.0,
+    "fires_per_min": 15.779625779625778,
+    "weapon_mix": {
+     "gun": 0.72,
+     "aircraft": 0.27,
+     "SAM": 0.0
+    }
+   },
+   "Visby": {
+    "share": 0.015975694444444445,
+    "score_per_min": 71.72353836122582,
+    "kd": 13.0,
+    "fires_per_min": 15.779178439469682,
+    "weapon_mix": {
+     "torpedo": 0.33,
+     "gun": 0.12,
+     "missile": 0.4,
+     "aircraft": 0.14
+    }
+   },
+   "Leander": {
+    "share": 0.013211805555555555,
+    "score_per_min": 61.34034165571616,
+    "kd": 4.0,
+    "fires_per_min": 25.229960578186596,
+    "weapon_mix": {
+     "torpedo": 0.51,
+     "gun": 0.49
+    }
+   },
+   "Buyan": {
+    "share": 0.01265625,
+    "score_per_min": 41.39917695473251,
+    "kd": 8.0,
+    "fires_per_min": 9.135802469135802,
+    "weapon_mix": {
+     "gun": 0.21,
+     "missile": 0.68,
+     "SAM": 0.12
+    }
+   },
+   "ArleighBurke": {
+    "share": 0.010135416666666666,
+    "score_per_min": 82.21993833504625,
+    "kd": 12.0,
+    "fires_per_min": 20.657759506680367,
+    "weapon_mix": {
+     "torpedo": 0.3,
+     "gun": 0.08,
+     "missile": 0.4,
+     "aircraft": 0.11,
+     "SAM": 0.1
+    }
+   }
+  },
+  "death_causes": {
+   "terrain": 2,
+   "weapon": 36,
+   "ram/collision": 2
+  },
+  "score_by_10min": [
+   19.41875,
+   38.84375,
+   50.25625,
+   64.15,
+   56.53125,
+   67.99375
+  ]
+ },
+ {
+  "label": "elite 10M + guard",
+  "policy": "runs/ppo_elite/checkpoints/policy_10002432.pt",
+  "minutes": 60.0,
+  "agents": 16,
+  "bots_per_world": 32,
+  "score": [
+   51.0625,
+   3.5553683780345433
+  ],
+  "kills": [
+   0.6322916666666667,
+   0.055161259139306626
+  ],
+  "deaths": [
+   0.057291666666666664,
+   0.014989936895483443
+  ],
+  "fired": [
+   15.090625,
+   0.6173479960019138
+  ],
+  "kd": 11.036363636363637,
+  "max_level_mean": 9.4375,
+  "agent_steps_per_sec": 2008.959142795308,
+  "by_type": {
+   "Yamato": {
+    "share": 0.14449305555555556,
+    "score_per_min": 70.9737107704138,
+    "kd": 59.0,
+    "fires_per_min": 9.040226846734273,
+    "weapon_mix": {
+     "gun": 0.66,
+     "aircraft": 0.34
+    }
+   },
+   "Iowa": {
+    "share": 0.12338541666666666,
+    "score_per_min": 70.59518784297171,
+    "kd": 42.75,
+    "fires_per_min": 19.77205571971296,
+    "weapon_mix": {
+     "torpedo": 0.0,
+     "gun": 0.49,
+     "missile": 0.42,
+     "aircraft": 0.08,
+     "depth/mine": 0.0,
+     "SAM": 0.0
+    }
+   },
+   "TuoChiang": {
+    "share": 0.06471527777777777,
+    "score_per_min": 46.421289837965446,
+    "kd": 81.0,
+    "fires_per_min": 14.261186822620454,
+    "weapon_mix": {
+     "torpedo": 0.06,
+     "gun": 0.13,
+     "missile": 0.58,
+     "SAM": 0.22
+    }
+   },
+   "Momi": {
+    "share": 0.0635451388888889,
+    "score_per_min": 27.883722200972628,
+    "kd": 0.7,
+    "fires_per_min": 12.146877219824054,
+    "weapon_mix": {
+     "torpedo": 0.29,
+     "gun": 0.44,
+     "depth/mine": 0.27
+    }
+   },
+   "Town": {
+    "share": 0.055447916666666666,
+    "score_per_min": 46.834491827916594,
+    "kd": 6.5,
+    "fires_per_min": 31.260567349239153,
+    "weapon_mix": {
+     "torpedo": 0.44,
+     "gun": 0.5,
+     "aircraft": 0.06,
+     "depth/mine": 0.0
+    }
+   },
+   "Skjold": {
+    "share": 0.046982638888888886,
+    "score_per_min": 50.57275885004804,
+    "kd": 9.5,
+    "fires_per_min": 12.7485034365531,
+    "weapon_mix": {
+     "gun": 0.22,
+     "missile": 0.73,
+     "SAM": 0.05
+    }
+   },
+   "ArleighBurke": {
+    "share": 0.03616319444444444,
+    "score_per_min": 45.943350936149784,
+    "kd": 19.0,
+    "fires_per_min": 17.830052808449352,
+    "weapon_mix": {
+     "torpedo": 0.39,
+     "gun": 0.11,
+     "missile": 0.38,
+     "aircraft": 0.1,
+     "SAM": 0.03
+    }
+   },
+   "Bismarck": {
+    "share": 0.036041666666666666,
+    "score_per_min": 71.30057803468208,
+    "kd": 10.0,
+    "fires_per_min": 14.76878612716763,
+    "weapon_mix": {
+     "gun": 0.81,
+     "aircraft": 0.19
+    }
+   },
+   "Montana": {
+    "share": 0.033177083333333336,
+    "score_per_min": 62.637362637362635,
+    "kd": 15.0,
+    "fires_per_min": 18.618524332810047,
+    "weapon_mix": {
+     "torpedo": 0.01,
+     "gun": 0.83,
+     "aircraft": 0.16,
+     "depth/mine": 0.0,
+     "SAM": 0.01
+    }
+   },
+   "Fletcher": {
+    "share": 0.03121875,
+    "score_per_min": 31.1644978311645,
+    "kd": 2.5,
+    "fires_per_min": 16.316316316316318,
+    "weapon_mix": {
+     "torpedo": 0.35,
+     "gun": 0.52,
+     "depth/mine": 0.12
+    }
+   },
+   "Type055": {
+    "share": 0.030864583333333334,
+    "score_per_min": 63.44920688491394,
+    "kd": 21.0,
+    "fires_per_min": 14.917313533580831,
+    "weapon_mix": {
+     "torpedo": 0.25,
+     "gun": 0.15,
+     "missile": 0.44,
+     "aircraft": 0.12,
+     "SAM": 0.03
+    }
+   },
+   "Espana": {
+    "share": 0.030833333333333334,
+    "score_per_min": 24.864864864864863,
+    "kd": 2.5,
+    "fires_per_min": 9.864864864864865,
+    "weapon_mix": {
+     "gun": 1.0
+    }
+   },
+   "Dreadnought": {
+    "share": 0.030822916666666665,
+    "score_per_min": 41.53430212909767,
+    "kd": 3.5,
+    "fires_per_min": 21.05441027374113,
+    "weapon_mix": {
+     "torpedo": 0.32,
+     "gun": 0.68
+    }
+   },
+   "FairmileD": {
+    "share": 0.030072916666666668,
+    "score_per_min": 10.010391409767925,
+    "kd": 3.0,
+    "fires_per_min": 9.69864911673017,
+    "weapon_mix": {
+     "torpedo": 0.46,
+     "gun": 0.2,
+     "depth/mine": 0.34
+    }
+   },
+   "Komar": {
+    "share": 0.029100694444444443,
+    "score_per_min": 11.526070874597304,
+    "kd": 1.0,
+    "fires_per_min": 15.212981744421906,
+    "weapon_mix": {
+     "torpedo": 0.44,
+     "gun": 0.31,
+     "depth/mine": 0.25
+    }
+   },
+   "Kirov": {
+    "share": 0.02703125,
+    "score_per_min": 90.59730250481695,
+    "kd": 31.0,
+    "fires_per_min": 16.72447013487476,
+    "weapon_mix": {
+     "torpedo": 0.27,
+     "gun": 0.27,
+     "missile": 0.3,
+     "aircraft": 0.13,
+     "SAM": 0.02
+    }
+   },
+   "Osa": {
+    "share": 0.02417361111111111,
+    "score_per_min": 32.70611893134157,
+    "kd": 2.2,
+    "fires_per_min": 11.720769893708704,
+    "weapon_mix": {
+     "gun": 0.57,
+     "missile": 0.43
+    }
+   },
+   "Visby": {
+    "share": 0.02284027777777778,
+    "score_per_min": 57.28184858619642,
+    "kd": 24.0,
+    "fires_per_min": 14.639708117968988,
+    "weapon_mix": {
+     "torpedo": 0.39,
+     "gun": 0.14,
+     "missile": 0.36,
+     "aircraft": 0.12
+    }
+   },
+   "Freccia": {
+    "share": 0.021673611111111112,
+    "score_per_min": 24.559436078180067,
+    "kd": 0.5,
+    "fires_per_min": 14.418455623197692,
+    "weapon_mix": {
+     "torpedo": 0.34,
+     "gun": 0.52,
+     "depth/mine": 0.15
+    }
+   },
+   "Freedom": {
+    "share": 0.021420138888888888,
+    "score_per_min": 63.02480142648728,
+    "kd": 3.0,
+    "fires_per_min": 15.95072134867888,
+    "weapon_mix": {
+     "gun": 0.19,
+     "missile": 0.61,
+     "aircraft": 0.16,
+     "SAM": 0.04
+    }
+   },
+   "Pt34": {
+    "share": 0.021197916666666667,
+    "score_per_min": 10.712530712530711,
+    "kd": 4.0,
+    "fires_per_min": 5.159705159705159,
+    "weapon_mix": {
+     "torpedo": 1.0
+    }
+   },
+   "G5": {
+    "share": 0.020864583333333332,
+    "score_per_min": 11.382925611582625,
+    "kd": 0.0,
+    "fires_per_min": 3.6445332001997004,
+    "weapon_mix": {
+     "torpedo": 1.0
+    }
+   },
+   "Buyan": {
+    "share": 0.015017361111111112,
+    "score_per_min": 34.959537572254334,
+    "kd": 12.0,
+    "fires_per_min": 5.687861271676301,
+    "weapon_mix": {
+     "gun": 0.16,
+     "missile": 0.84
+    }
+   },
+   "Leander": {
+    "share": 0.014260416666666666,
+    "score_per_min": 71.95032870708546,
+    "kd": 5.0,
+    "fires_per_min": 30.75237399561724,
+    "weapon_mix": {
+     "torpedo": 0.51,
+     "gun": 0.49
+    }
+   },
+   "Kolkata": {
+    "share": 0.013277777777777777,
+    "score_per_min": 94.14225941422595,
+    "kd": 16.0,
+    "fires_per_min": 16.55334728033473,
+    "weapon_mix": {
+     "torpedo": 0.32,
+     "gun": 0.18,
+     "missile": 0.46,
+     "SAM": 0.04
+    }
+   },
+   "Zumwalt": {
+    "share": 0.011378472222222222,
+    "score_per_min": 63.99145559963381,
+    "kd": 9.0,
+    "fires_per_min": 18.67561794324077,
+    "weapon_mix": {
+     "torpedo": 0.07,
+     "gun": 0.44,
+     "missile": 0.33,
+     "aircraft": 0.1,
+     "SAM": 0.06
+    }
+   }
+  },
+  "death_causes": {
+   "terrain": 6,
+   "weapon": 44,
+   "ram/collision": 4,
+   "obstacle": 1
+  },
+  "score_by_10min": [
+   19.125,
+   47.48125,
+   56.9875,
+   55.33125,
+   59.31875,
+   68.13125
+  ]
  }
 ]

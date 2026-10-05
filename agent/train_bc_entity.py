@@ -22,7 +22,7 @@ HEAD_WEIGHT = {"target": 2.0, "fire": 2.0}
 
 def bc_loss(logits: dict[str, torch.Tensor], labels: torch.Tensor, masks: torch.Tensor) -> torch.Tensor:
     total = 0.0
-    for i, name in enumerate(ep.HEAD_NAMES):
+    for i, name in enumerate(n for n in ep.HEAD_NAMES if n in logits):  # the policy's own heads
         ce = F.cross_entropy(logits[name], labels[:, i], reduction="none")
         m = masks[:, i]
         total = total + HEAD_WEIGHT.get(name, 1.0) * (ce * m).sum() / m.sum().clamp(min=1.0)
