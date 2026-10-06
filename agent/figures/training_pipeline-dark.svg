@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="940" height="360" viewBox="0 0 940 360" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" role="img">
+<svg xmlns="http://www.w3.org/2000/svg" width="940" height="372" viewBox="0 0 940 372" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" role="img">
 <title>Training: built-in bot as teacher, imitation learning, PPO, tougher opponents and new skills</title>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#9198a1"/></marker></defs>
-<rect width="940" height="360" fill="#0d1117"/>
-<rect x="16.0" y="14" width="200" height="246" rx="6" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+<rect width="940" height="372" fill="#0d1117"/>
+<rect x="16.0" y="14" width="200" height="258" rx="6" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
 <text x="32.0" y="38" font-size="11.5" font-weight="600" fill="#9198a1" text-anchor="start" letter-spacing="0.8">TEACHER</text>
 <text x="32.0" y="60" font-size="15" font-weight="600" fill="#e6edf3" text-anchor="start">Built-in Mk48 bot</text>
 <text x="32.0" y="79" font-size="13" font-weight="400" fill="#9198a1" text-anchor="start">hand-written rules</text>
@@ -11,12 +11,13 @@
 <text x="32.0" y="142" font-size="12.5" font-weight="400" fill="#e6edf3" text-anchor="start">steers, aims and fires</text>
 <text x="32.0" y="160" font-size="12.5" font-weight="400" fill="#e6edf3" text-anchor="start">by fixed rules</text>
 <line x1="32.0" y1="204" x2="200.0" y2="204" stroke="#3d444d" stroke-width="1"/>
-<text x="32.0" y="228" font-size="16" font-weight="600" fill="#e6edf3" text-anchor="start">26.0 pts/min</text>
-<text x="32.0" y="247" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start">standard test</text>
+<text x="32.0" y="224" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start">standard test</text>
+<text x="32.0" y="246" font-size="16" font-weight="600" fill="#e6edf3" text-anchor="start">26.0 pts/min</text>
+<text x="32.0" y="263" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start"></text>
 <path d="M220.0,126 L248.0,126" fill="none" stroke="#9198a1" stroke-width="1.5" marker-end="url(#arrow)"/>
-<path d="M116.0,264 L116.0,286" fill="none" stroke="#9198a1" stroke-width="1.5" marker-end="url(#arrow)"/>
-<text x="116.0" y="304" font-size="13" font-weight="400" fill="#e6edf3" text-anchor="middle">the normal game bots</text>
-<rect x="252.0" y="14" width="200" height="246" rx="6" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+<path d="M116.0,276 L116.0,298" fill="none" stroke="#9198a1" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="116.0" y="316" font-size="13" font-weight="400" fill="#e6edf3" text-anchor="middle">the normal game bots</text>
+<rect x="252.0" y="14" width="200" height="258" rx="6" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
 <text x="268.0" y="38" font-size="11.5" font-weight="600" fill="#78aef0" text-anchor="start" letter-spacing="0.8">STEP 1</text>
 <text x="268.0" y="60" font-size="15" font-weight="600" fill="#e6edf3" text-anchor="start">Imitation learning</text>
 <text x="268.0" y="79" font-size="13" font-weight="400" fill="#78aef0" text-anchor="start">DAgger</text>
@@ -25,12 +26,13 @@
 <text x="268.0" y="142" font-size="12.5" font-weight="400" fill="#e6edf3" text-anchor="start">would do in each moment</text>
 <text x="268.0" y="160" font-size="12.5" font-weight="400" fill="#e6edf3" text-anchor="start">10 rounds · 640k labels</text>
 <line x1="268.0" y1="204" x2="436.0" y2="204" stroke="#3d444d" stroke-width="1"/>
-<text x="268.0" y="228" font-size="16" font-weight="600" fill="#e6edf3" text-anchor="start">33.5 pts/min</text>
-<text x="268.0" y="247" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start">standard test</text>
+<text x="268.0" y="224" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start">standard test</text>
+<text x="268.0" y="246" font-size="16" font-weight="600" fill="#e6edf3" text-anchor="start">33.5 pts/min</text>
+<text x="268.0" y="263" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start"></text>
 <path d="M456.0,126 L484.0,126" fill="none" stroke="#9198a1" stroke-width="1.5" marker-end="url(#arrow)"/>
-<path d="M352.0,264 L352.0,286" fill="none" stroke="#9198a1" stroke-width="1.5" marker-end="url(#arrow)"/>
-<text x="352.0" y="304" font-size="13" font-weight="400" fill="#e6edf3" text-anchor="middle">NN 1, NN 2, … in the game</text>
-<rect x="488.0" y="14" width="200" height="246" rx="6" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+<path d="M352.0,276 L352.0,298" fill="none" stroke="#9198a1" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="352.0" y="316" font-size="13" font-weight="400" fill="#e6edf3" text-anchor="middle">NN 1, NN 2, … in the game</text>
+<rect x="488.0" y="14" width="200" height="258" rx="6" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
 <text x="504.0" y="38" font-size="11.5" font-weight="600" fill="#78aef0" text-anchor="start" letter-spacing="0.8">STEP 2</text>
 <text x="504.0" y="60" font-size="15" font-weight="600" fill="#e6edf3" text-anchor="start">Reinforcement learning</text>
 <text x="504.0" y="79" font-size="13" font-weight="400" fill="#78aef0" text-anchor="start">PPO + rewards</text>
@@ -39,25 +41,27 @@
 <text x="504.0" y="142" font-size="12.5" font-weight="400" fill="#e6edf3" text-anchor="start">kept close to step 1 at first</text>
 <text x="504.0" y="160" font-size="12.5" font-weight="400" fill="#e6edf3" text-anchor="start">~17M decisions</text>
 <line x1="504.0" y1="204" x2="672.0" y2="204" stroke="#3d444d" stroke-width="1"/>
-<text x="504.0" y="228" font-size="16" font-weight="600" fill="#e6edf3" text-anchor="start">55.0 pts/min</text>
-<text x="504.0" y="247" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start">standard test</text>
+<text x="504.0" y="224" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start">standard test</text>
+<text x="504.0" y="246" font-size="16" font-weight="600" fill="#e6edf3" text-anchor="start">55.0 pts/min</text>
+<text x="504.0" y="263" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start"></text>
 <path d="M692.0,126 L720.0,126" fill="none" stroke="#9198a1" stroke-width="1.5" marker-end="url(#arrow)"/>
-<path d="M588.0,264 L588.0,286" fill="none" stroke="#9198a1" stroke-width="1.5" marker-end="url(#arrow)"/>
-<text x="588.0" y="304" font-size="13" font-weight="400" fill="#e6edf3" text-anchor="middle">Elite 15M (results chart)</text>
-<rect x="724.0" y="14" width="200" height="246" rx="6" fill="#14243a" stroke="#78aef0" stroke-width="1.5"/>
+<path d="M588.0,276 L588.0,298" fill="none" stroke="#9198a1" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="588.0" y="316" font-size="13" font-weight="400" fill="#e6edf3" text-anchor="middle">Elite 15M (results chart)</text>
+<rect x="724.0" y="14" width="200" height="258" rx="6" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
 <text x="740.0" y="38" font-size="11.5" font-weight="600" fill="#78aef0" text-anchor="start" letter-spacing="0.8">STEP 3</text>
 <text x="740.0" y="60" font-size="15" font-weight="600" fill="#e6edf3" text-anchor="start">Tougher opponents</text>
 <text x="740.0" y="79" font-size="13" font-weight="400" fill="#78aef0" text-anchor="start">and new skills (PPO)</text>
 <text x="740.0" y="106" font-size="12.5" font-weight="400" fill="#e6edf3" text-anchor="start">copies of itself as rivals</text>
 <text x="740.0" y="124" font-size="12.5" font-weight="400" fill="#e6edf3" text-anchor="start">every ship type</text>
-<text x="740.0" y="142" font-size="12.5" font-weight="400" fill="#e6edf3" text-anchor="start">reward: protect the lead</text>
-<text x="740.0" y="160" font-size="12.5" font-weight="400" fill="#e6edf3" text-anchor="start">lessons: dive, SAM, decoy</text>
+<text x="740.0" y="142" font-size="12.5" font-weight="400" fill="#e6edf3" text-anchor="start">reward counts points lost</text>
+<text x="740.0" y="160" font-size="12.5" font-weight="400" fill="#e6edf3" text-anchor="start">examples: dive, SAM, decoy</text>
 <text x="740.0" y="178" font-size="12.5" font-weight="400" fill="#e6edf3" text-anchor="start">+3M decisions</text>
 <line x1="740.0" y1="204" x2="908.0" y2="204" stroke="#3d444d" stroke-width="1"/>
-<text x="740.0" y="228" font-size="16" font-weight="600" fill="#e6edf3" text-anchor="start">85% avg. place</text>
-<text x="740.0" y="247" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start">scoreboard (was 78%)</text>
-<path d="M824.0,264 L824.0,286" fill="none" stroke="#9198a1" stroke-width="1.5" marker-end="url(#arrow)"/>
-<text x="824.0" y="304" font-size="13" font-weight="600" fill="#78aef0" text-anchor="middle">NN Elite in the game</text>
-<text x="16.0" y="330" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start">pts/min: game score per minute in the standard test (2 test ships + 32 built-in bots, 60 game-minutes, 8 games).</text>
-<text x="16.0" y="347" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start">avg. place: average scoreboard position over an hour, as NN Elite among 11 NN bots and 40 built-in bots (100% = first).</text>
+<text x="740.0" y="224" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start">scoreboard test (other metric)</text>
+<text x="740.0" y="246" font-size="16" font-weight="600" fill="#e6edf3" text-anchor="start">85% avg. place</text>
+<text x="740.0" y="263" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start">Elite 15M: 78%</text>
+<path d="M824.0,276 L824.0,298" fill="none" stroke="#9198a1" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="824.0" y="316" font-size="13" font-weight="600" fill="#78aef0" text-anchor="middle">NN Elite in the game</text>
+<text x="16.0" y="342" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start">pts/min: game score per minute in the standard test (2 test ships + 32 built-in bots, 60 game-minutes, 8 games).</text>
+<text x="16.0" y="359" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start">avg. place: average scoreboard position over an hour, as NN Elite among 11 NN bots and 40 built-in bots (100% = first).</text>
 </svg>

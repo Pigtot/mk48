@@ -2,7 +2,7 @@
 
 The Python side of the project: the network, training, evaluation, and the process that drives NN ships in the
 playable game. The [top-level README](../README.md) explains what it does and how well it plays;
-[TECHNICAL.md](TECHNICAL.md) has the full details. This page covers running it and finding your way around.
+[TECHNICAL.md](TECHNICAL.md) has the full details. This page covers running it and what each file does.
 
 ## Running the game with NN bots
 
@@ -29,8 +29,8 @@ Mk48 is a top-down game, so "its view" is the normal game view centred on the sh
 
 Two other setups:
 
-- `./run_game.sh models/elite_v4.pt 12 40 models/elite_v2b_3M.pt`: the regular NN bots use v4, which dives,
-  keeps its sonar off underwater and uses SAMs and decoys more often than NN Elite, but scores less.
+- `./run_game.sh models/elite_v4.pt 12 40 models/elite_v2b_3M.pt`: the regular NN bots use v4, which keeps its
+  sonar off underwater and fires SAMs and decoys more often than NN Elite (94% and 97% of the time), but scores less.
 - `./run_game.sh models/bc_v6.pt 12 40 models/elite_opening.json`: NN Elite uses a separate opening network until
   level 5, then switches to the elite. It does better in the first 10 minutes and the same over an hour.
 
@@ -42,8 +42,8 @@ Two other setups:
 | `models/ppo_v5.pt` | first PPO run from the imitation weights (2M decisions) | starting point of the elite |
 | `models/elite_6M.pt`, `models/elite_15M.pt` | step 2 checkpoints; `elite_15M` is "Elite 15M" in the results chart | comparisons |
 | `models/elite_v2b_3M.pt` | step 3: Elite 15M after 3M more decisions | NN Elite in the game |
-| `models/elite_v4.pt` | a step 3 variant with stronger defensive habits | optional NN-bot style |
-| `models/opening_c.pt`, `models/elite_opening.json` | an opening network, and the recipe that hands over to the elite at level 5 | optional |
+| `models/elite_v4.pt` | a step 3 variant that uses SAMs and decoys more and scores less | optional NN-bot style |
+| `models/opening_c.pt`, `models/elite_opening.json` | an opening network, and the config that hands over to the elite at level 5 | optional |
 
 `bc_v6.pt` and `ppo_v5.pt` predate the salvo action (9 actions instead of 10); the server and `evaluate.py` pad
 their output, so they run as they are.
@@ -52,7 +52,7 @@ their output, so they run as they are.
 
 | File | What it does |
 |---|---|
-| `entity_policy.py` | the network: entity transformer, action heads, step-3 lessons, opening-book recipes |
+| `entity_policy.py` | the network: entity transformer, action heads, the step-3 auxiliary labels, opening configs |
 | `mk48env.py` | vectorised environment around the server's `train` mode; rewards; world restarts |
 | `train_bc_entity.py` | step 1: imitation (DAgger) |
 | `ppo_entity.py` | steps 2 and 3: PPO with a KL anchor, frozen opponents and reward presets |
@@ -67,7 +67,7 @@ their output, so they run as they are.
 | `tests/` | `.venv/bin/python -m pytest -q` |
 
 The game-side changes are in `../server/src/`: `train.rs` (training mode, observation and action encoding,
-collision guard, lead aim, ship personas), `nn_bots.rs` (NN control in the playable server) and `player.rs`
+collision guard, lead aim, per-life upgrade preferences), `nn_bots.rs` (NN control in the playable server) and `player.rs`
 (player rules for NN bots).
 
 ## What didn't work
@@ -80,4 +80,4 @@ collision guard, lead aim, ship personas), `nn_bots.rs` (NN control in the playa
 | Copying the bot's trigger pulls | never learned when to fire, because the bot's trigger is partly random | label the bot's firing solution instead |
 | PPO from the imitation weights with no anchor | it drifted away from what it had copied and got worse | a KL penalty toward the imitation policy, fading over the run |
 | Trusting the network to avoid oil platforms | 68 of 140 deaths in one test were platform crashes | the collision guard |
-| An exploration bonus for diving (step 3, run v2) | submarines dived 99% of the time and stopped attacking | ship ratings steer NN bots away from ships it plays badly |
+| An exploration bonus for diving (step 3, run v2) | submarines dived 99% of the time and stopped attacking: the bonus taught the move, not when to use it | no fix in training; in the game, ship ratings (score per ship) steer NN bots toward ships the network scores well in |

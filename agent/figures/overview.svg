@@ -4,7 +4,7 @@
 <rect width="760" height="548" fill="#ffffff"/>
 <rect x="230.0" y="14" width="300" height="54" rx="6" fill="#f6f8fa" stroke="#d1d9e0" stroke-width="1"/>
 <text x="380.0" y="37" font-size="15" font-weight="600" fill="#1f2328" text-anchor="middle">Mk48 game server</text>
-<text x="380.0" y="56" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="middle">local copy · real rules and physics</text>
+<text x="380.0" y="56" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="middle">local copy · unchanged game rules</text>
 <path d="M380.0,68 L380.0,110" fill="none" stroke="#59636e" stroke-width="1.5" marker-end="url(#arrow)"/>
 <text x="368.0" y="88" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="end">game state:</text>
 <text x="368.0" y="103" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="end">what a player&#x27;s client is sent</text>

@@ -147,7 +147,7 @@ def overview(t: dict[str, str]) -> Svg:
     # The game server.
     s.rect(cx - 150, 14, 300, 54)
     s.text(cx, 37, "Mk48 game server", 15, 600, anchor="middle")
-    s.text(cx, 56, "local copy · real rules and physics", 12.5, fill="muted", anchor="middle")
+    s.text(cx, 56, "local copy · unchanged game rules", 12.5, fill="muted", anchor="middle")
 
     # State goes down; screenshots don't.
     s.arrow([(cx, 68), (cx, 110)])
@@ -217,44 +217,44 @@ def overview(t: dict[str, str]) -> Svg:
 def training_pipeline(t: dict[str, str]) -> Svg:
     e = evals()
     score = {k: e[k]["score"][0] for k, _ in STANDARD}
-    W, H = 940, 360
+    W, H = 940, 372
     s = Svg(W, H, t, "Training: built-in bot as teacher, imitation learning, PPO, tougher opponents and new skills")
-    bw, gap, y0, bh = 200, 36, 14, 246
+    bw, gap, y0, bh = 200, 36, 14, 258
     stages = [
         dict(kicker="TEACHER", title="Built-in Mk48 bot", method="hand-written rules",
              lines=["ships with the game", "(server/src/bot.rs)", "steers, aims and fires", "by fixed rules"],
-             value=f"{score['built-in bot']:.1f} pts/min", value_note="standard test",
+             value=f"{score['built-in bot']:.1f} pts/min", metric="standard test", value_note="",
              becomes="the normal game bots"),
         dict(kicker="STEP 1", title="Imitation learning", method="DAgger",
              lines=["the network drives;", "the bot labels what it", "would do in each moment", "10 rounds · 640k labels"],
-             value=f"{score['imitation, transformer + 7 weapons']:.1f} pts/min", value_note="standard test",
+             value=f"{score['imitation, transformer + 7 weapons']:.1f} pts/min", metric="standard test", value_note="",
              becomes="NN 1, NN 2, … in the game"),
         dict(kicker="STEP 2", title="Reinforcement learning", method="PPO + rewards",
              lines=["+ score, damage, kills", "− hits taken, sinking", "kept close to step 1 at first",
                     "~17M decisions"],
-             value=f"{score['elite 15M + guard (final)']:.1f} pts/min", value_note="standard test",
+             value=f"{score['elite 15M + guard (final)']:.1f} pts/min", metric="standard test", value_note="",
              becomes="Elite 15M (results chart)"),
         dict(kicker="STEP 3", title="Tougher opponents", method="and new skills (PPO)",
-             lines=["copies of itself as rivals", "every ship type", "reward: protect the lead",
-                    "lessons: dive, SAM, decoy", "+3M decisions"],
-             value=f"{board_rank('elite_v2b_at_3M_confirm_'):.0%} avg. place",
-             value_note=f"scoreboard (was {board_rank('elite_15M_before_'):.0%})",
+             lines=["copies of itself as rivals", "every ship type", "reward counts points lost",
+                    "examples: dive, SAM, decoy", "+3M decisions"],
+             value=f"{board_rank('elite_v2b_at_3M_confirm_'):.0%} avg. place", metric="scoreboard test (other metric)",
+             value_note=f"Elite 15M: {board_rank('elite_15M_before_'):.0%}",
              becomes="NN Elite in the game"),
     ]
     x0 = (W - 4 * bw - 3 * gap) / 2
     for i, st in enumerate(stages):
         x = x0 + i * (bw + gap)
         learned = i > 0
-        s.rect(x, y0, bw, bh, fill="accent_box" if i == 3 else "box", stroke="accent" if i == 3 else "line",
-               width=1.5 if i == 3 else 1)
+        s.rect(x, y0, bw, bh)
         s.text(x + 16, y0 + 24, st["kicker"], 11.5, 600, fill="accent" if learned else "muted", letter_spacing="0.8")
         s.text(x + 16, y0 + 46, st["title"], 15, 600)
         s.text(x + 16, y0 + 65, st["method"], 13, fill="accent" if learned else "muted")
         for j, line in enumerate(st["lines"]):
             s.text(x + 16, y0 + 92 + j * 18, line, 12.5)
         s.line(x + 16, y0 + 190, x + bw - 16, y0 + 190)
-        s.text(x + 16, y0 + 214, st["value"], 16, 600)
-        s.text(x + 16, y0 + 233, st["value_note"], 12, fill="muted")
+        s.text(x + 16, y0 + 210, st["metric"], 12, fill="muted")
+        s.text(x + 16, y0 + 232, st["value"], 16, 600)
+        s.text(x + 16, y0 + 249, st["value_note"], 12, fill="muted")
         if i < 3:
             ym = y0 + 112
             s.arrow([(x + bw + 4, ym), (x + bw + gap - 4, ym)])
@@ -390,7 +390,7 @@ def gameplay_annotated() -> None:
     nn_rows = [18, 81, 102, 165, 207, 270, 375]  # NN 8, NN 6, NN Elite, NN 3, NN 5, NN 4, NN 10
     for y in nn_rows:
         draw.ellipse((1234, y - 5, 1244, y + 5), fill=blue)
-    label((1206, 130), ["Scoreboard: every ship in the game", "NN bot, driven by the network",
+    label((1206, 130), ["Scoreboard (scrolls): all ships", "NN bot, driven by a network",
                         "other names: built-in game bots"], anchor="ra", dot_line=1)
     img.save(OUT / "gameplay_annotated.png", optimize=True)
 
