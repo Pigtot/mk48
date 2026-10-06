@@ -1,15 +1,15 @@
 # mk48 neural-network bots: technical details
 
-*The plain-language overview is in [README.md](README.md). This page is for programmers.*
+*The overview is in the [top-level README](../README.md); [README.md](README.md) covers running the game
+and the files in this folder. This page is for programmers.*
 
 Neural-network players for [mk48](https://github.com/SoftbearStudios/mk48), the open-source naval
-combat game (AGPL-3.0), trained on a server you run yourself. You can play against them, or watch
-the game through their eyes, in the real web client.
+combat game (AGPL-3.0), trained on a server you run yourself. You can play against them, or watch one
+play from its ship's view, in the real web client. The networks receive structured game state (1,201
+numbers per decision, see [What it sees](#what-it-sees)), not screen pixels.
 
 Everything runs on your machine, against the game in this repository. Nothing here connects to
 mk48.io, CrazyGames or any other public server, and there is no anti-detection code of any kind.
-
-![Training and evaluation](results/training.png)
 
 ---
 
@@ -37,25 +37,8 @@ Build the client before the server: the server embeds the built client.
 
 ## Quick start
 
-```bash
-./run_game.sh models/bc_v6.pt 12 40 models/elite_v2b_3M.pt
-```
-
-Arguments: main policy, NN bots, built-in bots, optional elite policy. Run it from this folder;
-it keeps running until Ctrl+C, and refuses to start if a server is already on port 8443.
-
-1. Open **https://localhost:8443** and click past the certificate warning (your own server uses a
-   self-signed certificate).
-2. Pick a name and press Play:
-   - **`AI Elite`**: the elite network drives your ship and you see exactly what it sees.
-   - **`AI`**: a regular NN bot drives your ship.
-   - anything else: you play yourself (hold the mouse to steer, click to fire, 1–9 pick a
-     weapon, R dives/surfaces a submarine, scroll to zoom).
-3. NN bots are named **NN 1, NN 2, …** and the elite is **NN Elite**. The scoreboard lists
-   everyone, bots included (it scrolls).
-
-mk48 is a top-down game, so there is no first-person camera; "through its eyes" means your
-browser shows the NN ship's own view.
+`./run_game.sh models/bc_v6.pt 12 40 models/elite_v2b_3M.pt`, then open https://localhost:8443. The
+arguments and the player names that hand your ship to a network are in [README.md](README.md#running-the-game-with-nn-bots).
 
 ---
 
@@ -71,9 +54,9 @@ plus 32 built-in bots per world, 8 worlds, 60 game-minutes each. "Score" is the 
 | Elite at 6M steps (`models/elite_6M.pt`) | 48.0–49.5 | 0.52–0.62 | 0.02–0.04 | 13–24 |
 | Elite at 10M steps | 51.1 ± 3.6 | 0.63 | 0.06 | 11.0 |
 | Elite at 4M steps | 45.7–49.2 | 0.57–0.59 | 0.04 | 14–17 |
-| Expert: the built-in bot's logic, played through the NN action interface | 42–59 | 0.38–0.60 | 0.09–0.12 | 4–5 |
+| Expert: the built-in bot's logic, played through the NN action interface | 49.4 ± 4.1 | 0.49 | 0.11 | 4.7 |
 | Imitation policy (`bc_v6`, the regular NN bots) | 33.5 ± 3.2 | 0.30 | 0.16 | 1.9 |
-| Built-in bot | 23–30 | 0.11 | 0.08 | 1.3 |
+| Built-in bot | 26.0 ± 2.0 | 0.11 | 0.08 | 1.3 |
 | Best PPO trained from scratch (v3) | 23.9 ± 2.8 | 0.18 | 0.14 | 1.3 |
 | Random actions | 3.9 ± 1.1 | 0.03 | 0.15 | 0.2 |
 
@@ -294,12 +277,8 @@ An **entity transformer** (`entity_policy.py`):
   token directly, so aiming is "pick a ship" rather than regressing coordinates.
 - A separate value network with the same shape is used for PPO.
 
-![Inside the networks](results/nn_3d.png)
-
-Left: the elite's training losses. Middle: the imitation network's loss over a 2D slice of weight
-space; the trained weights sit at the bottom of the bowl. Right: every neuron of the elite at one
-real game moment, from the 1,201 inputs through the token embeddings, both transformer layers and
-the latent vector to the 9 decision heads (here: torpedo an enemy with a salvo).
+The policy has 883,305 weights. The small CNN is the only convolution, and its input is the 15×15
+land/border grid built from map data; nothing in the observation is rendered.
 
 ### Rules outside the network
 
@@ -342,8 +321,10 @@ The network makes the decisions; a few fixed rules sit around it:
 ### 1. A headless training world (fast simulation)
 
 `server train` (`../server/src/train.rs`) runs the real game world with N network-controlled
-ships and built-in bots, with no networking and no wall clock: about **18,000 agent-steps per
-second per process**, versus ~10 for a bot playing through a browser. Python talks to it over
+ships and built-in bots, with no networking and no wall clock: up to ~14,700 agent-steps per
+second over 8 processes with scripted agents (`agent_steps_per_sec` in `results/evals.json`) and
+about 1,000 per second while training the transformer with PPO, against 5 per ship per second in
+real time. Python talks to it over
 pipes (`mk48env.py`, a vectorized Gymnasium/Stable-Baselines3-style environment).
 
 - One episode is one life; worlds restart every 30 game-minutes (staggered) so training keeps
@@ -364,7 +345,7 @@ to copy it (`train_bc_entity.py`):
   ("a ready weapon can hit this target"), which is learnable.
 
 Result: `bc_v6`, 33.5 score/min. That's above the built-in bot, but below the bot's own logic played
-through the NN interface (the "expert", 42–59).
+through the NN interface (the "expert", 49.4).
 
 ### 3. Reinforcement learning from the imitation policy (PPO)
 
@@ -429,12 +410,14 @@ kills at the same death rate). Late in the run the policy drifted far from the i
 | `ship_ratings.py` | Ship ratings (score/min per ship for a policy) for personas; the game server reads `ship_ratings.tsv` |
 | `tests/test_server_rules.py` | Runs `server self-test` (lead aim, personas, player rules for NN bots) and checks the score-lost info |
 | `serve_policy.py` | Runs main + elite policies for the game server |
-| `plot_training.py` | 3D viridis chart (`runs/training.png`) and 2D chart |
-| `plot_nn_3d.py` | 3D views of the networks: training losses, loss landscape, the elite's neurons at one game moment |
+| `plot_readme.py` | Figures for the top-level README (`figures/`, light and dark), from `results/evals.json`, `results/pressure/` and the screenshot |
+| `plot_training.py` | 2D and 3D training/evaluation charts (`runs/training_2d.png`, `runs/training.png`; see [Diagnostic plots](#diagnostic-plots)) |
+| `plot_nn_3d.py` | Elite losses, an imitation-loss slice and the elite's activations at one game moment ([Diagnostic plots](#diagnostic-plots)) |
 | `run_game.sh` | Starts the playable server with NN bots |
 | `models/` | Trained networks: `bc_v6.pt` (imitation), `ppo_v5.pt`, `elite_6M.pt`, `elite_15M.pt`, `elite_v2b_3M.pt` (the current elite), `elite_v4.pt` (best skills; a second style), `opening_c.pt` with `elite_opening.json` (opening book: opening_c until level 5, then the elite) |
 | `ship_ratings.tsv` | The current elite's ship ratings, read by the game server through `run_game.sh` |
-| `results/` | Evaluation results (`evals.json`), pressure-test results (`pressure/`) and charts |
+| `results/` | Evaluation results (`evals.json`), pressure-test results (`pressure/`), the game screenshot and diagnostic charts |
+| `figures/` | README figures generated by `plot_readme.py` |
 | `train_ppo.py`, `train_bc.py` | Earlier Stable-Baselines3 MLP versions (v1–v4), kept for reference |
 
 One server build (`server/target`) serves both the game and training (`server train`). The
@@ -463,6 +446,7 @@ After Setup, from this folder:
     --procs 32 --steps 4000000 --free-heads submerge,active --dive-bias 17 --defense-coef 0.05 --run ppo_elite2b
 .venv/bin/python pressure_test.py models/elite_v2b_3M.pt --ratings ship_ratings.tsv --label "new elite"   # scorecard
 .venv/bin/python plot_training.py
+.venv/bin/python plot_readme.py   # README figures
 .venv/bin/python -m pytest -q
 ```
 
@@ -471,6 +455,35 @@ Ctrl+C or SIGTERM during training saves the model and exits. Checkpoints are wri
 Training from this source uses the 10-action interface (with salvo). The shipped `bc_v6` and
 `ppo_v5` models predate it (9 actions); the elite was upgraded from 9 to 10 actions when its
 training started.
+
+---
+
+## Diagnostic plots
+
+These were made while developing the networks. They are useful for checking runs, not for judging
+how well the networks play; for that, use the results tables above.
+
+![Training curves and every saved evaluation](results/training_2d.png)
+
+`plot_training.py`. Top: training-world metrics per run (score, deaths, kills, highest level per
+life) against training steps. Training worlds differ between runs, so compare curves within a run.
+Bottom: every saved evaluation in the standard test (2 agents + 32 built-in bots per world, 8
+worlds, 60 game-minutes), mean with a 95% interval.
+
+![Training and evaluation in 3D](results/training.png)
+
+The same data in 3D. Left: smoothed training score per run. Right: evaluation score per 10-minute
+block of world age; every policy starts slowly in level-1 boats and scores more as it upgrades.
+
+![Elite losses, an imitation-loss slice and activations](results/nn_3d.png)
+
+`plot_nn_3d.py`. Left: the elite's PPO diagnostics over its 15M steps, each scaled to 0–1. Middle:
+the imitation loss on 4,000 fresh game states, evaluated on a grid along two random,
+filter-normalised directions through the trained imitation weights (Li et al., 2018). It is a 2D
+slice through an 883k-dimensional space: it shows that the trained weights are a minimum along those
+two directions, not the shape of the whole loss surface. Right: every unit's activation in the elite
+for one recorded game state, from the 1,201 inputs through the token embeddings, both transformer
+layers and the latent vector to the decision heads.
 
 ---
 

@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="516" viewBox="0 0 760 516" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" role="img">
+<title>Game score per minute in the standard test, with kills and deaths per minute</title>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#59636e"/></marker></defs>
+<rect width="760" height="516" fill="#ffffff"/>
+<text x="16" y="26" font-size="15" font-weight="600" fill="#1f2328" text-anchor="start">Game score per minute</text>
+<text x="16" y="46" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start">standard test against the game&#x27;s built-in bots · higher is better</text>
+<line x1="248.0" y1="58" x2="248.0" y2="234" stroke="#eaeef2" stroke-width="1"/>
+<text x="248.0" y="250" font-size="12" font-weight="400" fill="#59636e" text-anchor="middle">0</text>
+<line x1="321.3333333333333" y1="58" x2="321.3333333333333" y2="234" stroke="#eaeef2" stroke-width="1"/>
+<text x="321.3333333333333" y="250" font-size="12" font-weight="400" fill="#59636e" text-anchor="middle">10</text>
+<line x1="394.66666666666663" y1="58" x2="394.66666666666663" y2="234" stroke="#eaeef2" stroke-width="1"/>
+<text x="394.66666666666663" y="250" font-size="12" font-weight="400" fill="#59636e" text-anchor="middle">20</text>
+<line x1="468.0" y1="58" x2="468.0" y2="234" stroke="#eaeef2" stroke-width="1"/>
+<text x="468.0" y="250" font-size="12" font-weight="400" fill="#59636e" text-anchor="middle">30</text>
+<line x1="541.3333333333333" y1="58" x2="541.3333333333333" y2="234" stroke="#eaeef2" stroke-width="1"/>
+<text x="541.3333333333333" y="250" font-size="12" font-weight="400" fill="#59636e" text-anchor="middle">40</text>
+<line x1="614.6666666666666" y1="58" x2="614.6666666666666" y2="234" stroke="#eaeef2" stroke-width="1"/>
+<text x="614.6666666666666" y="250" font-size="12" font-weight="400" fill="#59636e" text-anchor="middle">50</text>
+<line x1="688.0" y1="58" x2="688.0" y2="234" stroke="#eaeef2" stroke-width="1"/>
+<text x="688.0" y="250" font-size="12" font-weight="400" fill="#59636e" text-anchor="middle">60</text>
+<text x="236" y="83" font-size="13.5" font-weight="400" fill="#1f2328" text-anchor="end">Random actions</text>
+<rect x="248" y="69" width="28.9" height="20" fill="#8c959f"/>
+<line x1="268.935647027528" y1="79" x2="284.8601863058053" y2="79" stroke="#1f2328" stroke-width="1.2"/>
+<line x1="268.935647027528" y1="74" x2="268.935647027528" y2="84" stroke="#1f2328" stroke-width="1.2"/>
+<line x1="284.8601863058053" y1="74" x2="284.8601863058053" y2="84" stroke="#1f2328" stroke-width="1.2"/>
+<text x="292.8601863058053" y="83.5" font-size="13" font-weight="400" fill="#1f2328" text-anchor="start">3.9</text>
+<text x="236" y="117" font-size="13.5" font-weight="400" fill="#1f2328" text-anchor="end">Built-in bot</text>
+<rect x="248" y="103" width="191.0" height="20" fill="#8c959f"/>
+<line x1="424.09429332803836" y1="113" x2="453.81959556085053" y2="113" stroke="#1f2328" stroke-width="1.2"/>
+<line x1="424.09429332803836" y1="108" x2="424.09429332803836" y2="118" stroke="#1f2328" stroke-width="1.2"/>
+<line x1="453.81959556085053" y1="108" x2="453.81959556085053" y2="118" stroke="#1f2328" stroke-width="1.2"/>
+<text x="461.81959556085053" y="117.5" font-size="13" font-weight="400" fill="#1f2328" text-anchor="start">26.0</text>
+<text x="236" y="151" font-size="13.5" font-weight="400" fill="#1f2328" text-anchor="end">Imitation (step 1)</text>
+<rect x="248" y="137" width="245.6" height="20" fill="#aab9cc"/>
+<line x1="469.95390991690687" y1="147" x2="517.3335900830932" y2="147" stroke="#1f2328" stroke-width="1.2"/>
+<line x1="469.95390991690687" y1="142" x2="469.95390991690687" y2="152" stroke="#1f2328" stroke-width="1.2"/>
+<line x1="517.3335900830932" y1="142" x2="517.3335900830932" y2="152" stroke="#1f2328" stroke-width="1.2"/>
+<text x="525.3335900830932" y="151.5" font-size="13" font-weight="400" fill="#1f2328" text-anchor="start">33.5</text>
+<text x="236" y="185" font-size="13.5" font-weight="400" fill="#1f2328" text-anchor="end">Built-in bot, NN controls*</text>
+<rect x="248" y="171" width="362.3" height="20" fill="#8c959f"/>
+<line x1="580.399616058022" y1="181" x2="640.1489950530889" y2="181" stroke="#1f2328" stroke-width="1.2"/>
+<line x1="580.399616058022" y1="176" x2="580.399616058022" y2="186" stroke="#1f2328" stroke-width="1.2"/>
+<line x1="640.1489950530889" y1="176" x2="640.1489950530889" y2="186" stroke="#1f2328" stroke-width="1.2"/>
+<text x="648.1489950530889" y="185.5" font-size="13" font-weight="400" fill="#1f2328" text-anchor="start">49.4</text>
+<text x="236" y="219" font-size="13.5" font-weight="600" fill="#1f2328" text-anchor="end">Elite 15M (step 2)</text>
+<rect x="248" y="205" width="403.4" height="20" fill="#2b62a8"/>
+<line x1="622.9774223716844" y1="215" x2="679.7656331838712" y2="215" stroke="#1f2328" stroke-width="1.2"/>
+<line x1="622.9774223716844" y1="210" x2="622.9774223716844" y2="220" stroke="#1f2328" stroke-width="1.2"/>
+<line x1="679.7656331838712" y1="210" x2="679.7656331838712" y2="220" stroke="#1f2328" stroke-width="1.2"/>
+<text x="687.7656331838712" y="219.5" font-size="13" font-weight="600" fill="#1f2328" text-anchor="start">55.0</text>
+<text x="258" y="219.5" font-size="12.5" font-weight="600" fill="#ffffff" text-anchor="start">2.1× the built-in bot</text>
+<text x="16" y="290" font-size="14" font-weight="600" fill="#1f2328" text-anchor="start">Ships sunk per minute</text>
+<text x="16" y="308" font-size="12" font-weight="400" fill="#59636e" text-anchor="start">higher is better</text>
+<text x="194" y="335" font-size="12.5" font-weight="400" fill="#1f2328" text-anchor="end">Built-in bot</text>
+<rect x="204" y="323" width="15.3" height="16" fill="#8c959f"/>
+<text x="225.34722222222223" y="335.5" font-size="12.5" font-weight="400" fill="#1f2328" text-anchor="start">0.11</text>
+<text x="194" y="363" font-size="12.5" font-weight="400" fill="#1f2328" text-anchor="end">Imitation</text>
+<rect x="204" y="351" width="43.3" height="16" fill="#aab9cc"/>
+<text x="253.33333333333331" y="363.5" font-size="12.5" font-weight="400" fill="#1f2328" text-anchor="start">0.30</text>
+<text x="194" y="391" font-size="12.5" font-weight="400" fill="#1f2328" text-anchor="end">Built-in bot, NN controls*</text>
+<rect x="204" y="379" width="70.9" height="16" fill="#8c959f"/>
+<text x="280.86805555555554" y="391.5" font-size="12.5" font-weight="400" fill="#1f2328" text-anchor="start">0.49</text>
+<text x="194" y="419" font-size="12.5" font-weight="600" fill="#1f2328" text-anchor="end">Elite 15M</text>
+<rect x="204" y="407" width="117.4" height="16" fill="#2b62a8"/>
+<text x="327.3611111111111" y="419.5" font-size="12.5" font-weight="600" fill="#1f2328" text-anchor="start">0.81</text>
+<text x="388" y="290" font-size="14" font-weight="600" fill="#1f2328" text-anchor="start">Times sunk per minute</text>
+<text x="388" y="308" font-size="12" font-weight="400" fill="#59636e" text-anchor="start">lower is better</text>
+<text x="566" y="335" font-size="12.5" font-weight="400" fill="#1f2328" text-anchor="end">Built-in bot</text>
+<rect x="576" y="323" width="54.8" height="16" fill="#8c959f"/>
+<text x="636.84375" y="335.5" font-size="12.5" font-weight="400" fill="#1f2328" text-anchor="start">0.08</text>
+<text x="566" y="363" font-size="12.5" font-weight="400" fill="#1f2328" text-anchor="end">Imitation</text>
+<rect x="576" y="351" width="104.9" height="16" fill="#aab9cc"/>
+<text x="686.9479166666666" y="363.5" font-size="12.5" font-weight="400" fill="#1f2328" text-anchor="start">0.16</text>
+<text x="566" y="391" font-size="12.5" font-weight="400" fill="#1f2328" text-anchor="end">Built-in bot, NN controls*</text>
+<rect x="576" y="379" width="68.4" height="16" fill="#8c959f"/>
+<text x="650.3854166666666" y="391.5" font-size="12.5" font-weight="400" fill="#1f2328" text-anchor="start">0.11</text>
+<text x="566" y="419" font-size="12.5" font-weight="600" fill="#1f2328" text-anchor="end">Elite 15M</text>
+<rect x="576" y="407" width="27.8" height="16" fill="#2b62a8"/>
+<text x="609.7604166666666" y="419.5" font-size="12.5" font-weight="600" fill="#1f2328" text-anchor="start">0.04</text>
+<text x="16" y="454" font-size="12" font-weight="400" fill="#59636e" text-anchor="start">Standard test: 2 test ships + 32 built-in bots per game, 60 game-minutes, 8 independent games, fresh worlds.</text>
+<text x="16" y="471" font-size="12" font-weight="400" fill="#59636e" text-anchor="start">Whiskers: 95% interval within one run. Repeat runs of the same model have differed by up to 6 pts/min.</text>
+<text x="16" y="488" font-size="12" font-weight="400" fill="#59636e" text-anchor="start">* The built-in bot&#x27;s own decisions sent through the network&#x27;s controls: aim snaps onto ships, and it fires</text>
+<text x="24" y="505" font-size="12" font-weight="400" fill="#59636e" text-anchor="start">whenever a weapon can hit. Data: agent/results/evals.json</text>
+</svg>
